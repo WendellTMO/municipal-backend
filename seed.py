@@ -237,6 +237,60 @@ def _ocorrencia(autor_id, viagem_id, tipo, descricao, status=StatusOcorrencia.AB
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+APELIDO_UFCG = "UFCG — Campus I (Rua Aprígio Veloso)"
+APELIDO_UEPB = "UEPB — Campus I (Baraúnas)"
+APELIDO_CESG = "CESG — Escola Estadual Assis Chateaubriand"
+
+# (nome, tipo, apelido do ponto onde a instituição fica)
+INSTITUICOES_DEMO = [
+    (
+        "Universidade Federal de Campina Grande (UFCG)",
+        TipoInstituicao.UNIVERSIDADE_PUBLICA,
+        APELIDO_UFCG,
+    ),
+    (
+        "Universidade Estadual da Paraíba (UEPB)",
+        TipoInstituicao.UNIVERSIDADE_PUBLICA,
+        APELIDO_UEPB,
+    ),
+    (
+        "CESG - Escola Estadual Assis Chateaubriand",
+        TipoInstituicao.ESCOLA_PUBLICA,
+        APELIDO_CESG,
+    ),
+]
+
+
+def _get_instituicao(nome):
+    return db.session.query(Instituicao).filter_by(nome=nome).first()
+
+
+def vincular_instituicoes_aos_pontos(pref) -> None:
+    """Cria ou reaponta cada instituição demo para o ponto de rota correto.
+
+    Idempotente: pode rodar de novo em banco já semeado.
+    """
+    for nome, tipo, apelido in INSTITUICOES_DEMO:
+        ponto = db.session.query(Ponto).filter_by(prefeitura_id=pref.id, apelido=apelido).first()
+        if ponto is None:
+            continue
+        inst = _get_instituicao(nome)
+        if inst is None:
+            inst = Instituicao(
+                nome=nome,
+                tipo=tipo,
+                fonte="MANUAL_DEMO",
+                codigo_externo=str(abs(hash(nome)) % 10_000_000),
+                uf="PB",
+                prefeitura_id=pref.id,
+                situacao="ATIVA",
+                categoria_administrativa="Pública",
+            )
+            db.session.add(inst)
+        inst.ponto_id = ponto.id
+    db.session.flush()
+
+
 def seed_demo_data() -> None:
     print("\n" + "=" * 50)
     print("BusKa Demo Seed — Campina Grande, PB")
@@ -245,6 +299,10 @@ def seed_demo_data() -> None:
     # Idempotency: skip if gestor already seeded
     if db.session.query(Gestor).filter_by(email="admin@buska.app").first():
         print("Demo data already exists. Skipping.\n")
+        pref_existente = db.session.query(Prefeitura).filter_by(codigo_ibge="2504009").first()
+        if pref_existente:
+            vincular_instituicoes_aos_pontos(pref_existente)
+            db.session.commit()
         return
 
     pw = generate_password_hash(TEST_PASSWORD)
@@ -277,9 +335,9 @@ def seed_demo_data() -> None:
     print("Creating geographic points...")
 
     # Instituições
-    p_ufcg = _ponto(pref.id, -7.21676, -35.90820, "UFCG — Campus I (Rua Aprígio Veloso)")
-    p_uepb = _ponto(pref.id, -7.23260, -35.89430, "UEPB — Campus I (Baraúnas)")
-    _ponto(pref.id, -7.22140, -35.88790, "CESG — Escola Estadual Assis Chateaubriand")
+    p_ufcg = _ponto(pref.id, -7.21676, -35.90820, APELIDO_UFCG)
+    p_uepb = _ponto(pref.id, -7.23260, -35.89430, APELIDO_UEPB)
+    _ponto(pref.id, -7.22140, -35.88790, APELIDO_CESG)
 
     # Terminais / pontos centrais
     p_terminal = _ponto(pref.id, -7.23050, -35.88090, "Terminal de Integração CG")
@@ -322,38 +380,9 @@ def seed_demo_data() -> None:
     # ── 4. Instituições ───────────────────────────────────────────────────────
     print("Creating institutions...")
 
-    def _inst(nome, tipo, lat, lon, apelido_ponto):
-        p = _ponto(pref.id, lat, lon, apelido_ponto)
-        db.session.flush()
-        i = Instituicao(
-            nome=nome,
-            tipo=tipo,
-            fonte="MANUAL_DEMO",
-            codigo_externo=str(abs(hash(nome)) % 10_000_000),
-            uf="PB",
-            prefeitura_id=pref.id,
-            ponto_id=p.id,
-            situacao="ATIVA",
-            categoria_administrativa="Pública",
-        )
-        db.session.add(i)
-        db.session.flush()
-        return i
-
-    ufcg = _inst(
-        "Universidade Federal de Campina Grande (UFCG)",
-        TipoInstituicao.UNIVERSIDADE_PUBLICA,
-        -7.21676,
-        -35.90820,
-        "UFCG Campus I",
-    )
-    uepb = _inst(
-        "Universidade Estadual da Paraíba (UEPB)",
-        TipoInstituicao.UNIVERSIDADE_PUBLICA,
-        -7.23260,
-        -35.89430,
-        "UEPB Campus I",
-    )
+    vincular_instituicoes_aos_pontos(pref)
+    ufcg = _get_instituicao(INSTITUICOES_DEMO[0][0])
+    uepb = _get_instituicao(INSTITUICOES_DEMO[1][0])
 
     # ── 5. Ônibus ─────────────────────────────────────────────────────────────
     print("Creating fleet...")
