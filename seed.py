@@ -6,7 +6,6 @@ Also supports importing Prefeituras and Instituicoes from CSV files.
 """
 
 import os
-import uuid
 from datetime import UTC, date, datetime, time, timedelta
 
 from werkzeug.security import generate_password_hash
@@ -22,7 +21,7 @@ from app.models.enum import (
     UserRole,
     UserStatus,
 )
-from app.models.geo import Endereco, Instituicao, Ponto
+from app.models.geo import Instituicao, Ponto
 from app.models.notificacao import Notificacao
 from app.models.ocorrencia import Ocorrencia
 from app.models.onibus import Onibus
@@ -30,8 +29,8 @@ from app.models.prefeitura import Prefeitura
 from app.models.rota import HorarioRota, Rota, RotaAluno, RotaPonto
 from app.models.user import Aluno, Gestor, Motorista
 from app.models.viagem import AlunosConfirmados, Viagem
+from scripts.seeds.instituicoes_importer import import_escolas_csv, import_ies_csv
 from scripts.seeds.prefeituras_importer import import_prefeituras_csv
-from scripts.seeds.instituicoes_importer import import_ies_csv, import_escolas_csv
 
 app = create_app()
 TEST_PASSWORD = "buska123"
@@ -41,20 +40,16 @@ TEST_PASSWORD = "buska123"
 # CSV catalog helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def should_import_prefeituras() -> bool:
     return (
-        db.session.query(Prefeitura.id)
-        .filter(Prefeitura.codigo_ibge.isnot(None))
-        .first()
-        is None
+        db.session.query(Prefeitura.id).filter(Prefeitura.codigo_ibge.isnot(None)).first() is None
     )
 
 
 def should_import_instituicoes() -> bool:
     return (
-        db.session.query(Instituicao.id)
-        .filter(Instituicao.fonte.in_(("EMEC", "INEP")))
-        .first()
+        db.session.query(Instituicao.id).filter(Instituicao.fonte.in_(("EMEC", "INEP"))).first()
         is None
     )
 
@@ -102,6 +97,7 @@ def seed_catalog_from_csv() -> None:
 # Demo seed helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _ponto(prefeitura_id, lat, lon, apelido):
     p = Ponto(prefeitura_id=prefeitura_id, latitude=lat, longitude=lon, apelido=apelido)
     db.session.add(p)
@@ -124,11 +120,23 @@ def _motorista(prefeitura_id, nome, email, cpf, telefone, cnh, pw_hash):
     return m
 
 
-def _aluno(prefeitura_id, nome, email, cpf, telefone, pw_hash, matricula,
-           instituicao_id, ponto_casa_id, status=UserStatus.ACTIVE,
-           nome_responsavel=None, cpf_responsavel=None,
-           email_responsavel=None, guardian_consented_at=None,
-           data_nascimento=None):
+def _aluno(
+    prefeitura_id,
+    nome,
+    email,
+    cpf,
+    telefone,
+    pw_hash,
+    matricula,
+    instituicao_id,
+    ponto_casa_id,
+    status=UserStatus.ACTIVE,
+    nome_responsavel=None,
+    cpf_responsavel=None,
+    email_responsavel=None,
+    guardian_consented_at=None,
+    data_nascimento=None,
+):
     a = Aluno(
         prefeitura_id=prefeitura_id,
         nome=nome,
@@ -228,6 +236,7 @@ def _ocorrencia(autor_id, viagem_id, tipo, descricao, status=StatusOcorrencia.AB
 # Main demo data
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def seed_demo_data() -> None:
     print("\n" + "=" * 50)
     print("BusKa Demo Seed — Campina Grande, PB")
@@ -242,11 +251,7 @@ def seed_demo_data() -> None:
     today = date.today()
 
     # ── 1. Prefeitura ─────────────────────────────────────────────────────────
-    pref = (
-        db.session.query(Prefeitura)
-        .filter(Prefeitura.codigo_ibge == "2504009")
-        .first()
-    )
+    pref = db.session.query(Prefeitura).filter(Prefeitura.codigo_ibge == "2504009").first()
     if not pref:
         raise Exception(
             "Campina Grande (IBGE 2504009) not found. "
@@ -272,21 +277,21 @@ def seed_demo_data() -> None:
     print("Creating geographic points...")
 
     # Instituições
-    p_ufcg       = _ponto(pref.id, -7.21676, -35.90820, "UFCG — Campus I (Rua Aprígio Veloso)")
-    p_uepb       = _ponto(pref.id, -7.23260, -35.89430, "UEPB — Campus I (Baraúnas)")
-    p_cesg       = _ponto(pref.id, -7.22140, -35.88790, "CESG — Escola Estadual Assis Chateaubriand")
+    p_ufcg = _ponto(pref.id, -7.21676, -35.90820, "UFCG — Campus I (Rua Aprígio Veloso)")
+    p_uepb = _ponto(pref.id, -7.23260, -35.89430, "UEPB — Campus I (Baraúnas)")
+    _ponto(pref.id, -7.22140, -35.88790, "CESG — Escola Estadual Assis Chateaubriand")
 
     # Terminais / pontos centrais
-    p_terminal   = _ponto(pref.id, -7.23050, -35.88090, "Terminal de Integração CG")
-    p_catole      = _ponto(pref.id, -7.24510, -35.92010, "Praça do Açude — Bairro Catole")
-    p_bodocongo  = _ponto(pref.id, -7.21960, -35.93760, "Av. Manoel Tavares — Bodocongó")
-    p_liberdade  = _ponto(pref.id, -7.21170, -35.90310, "Av. Floriano Peixoto — Liberdade")
-    p_jose_pin   = _ponto(pref.id, -7.22660, -35.87450, "Rua Cônego Rolim — José Pinheiro")
-    p_mirande    = _ponto(pref.id, -7.28950, -35.95200, "Praça Central — Galante (distrito)")
-    p_queimadas  = _ponto(pref.id, -7.61860, -35.90050, "Terminal Rodoviário — Queimadas")
+    p_terminal = _ponto(pref.id, -7.23050, -35.88090, "Terminal de Integração CG")
+    p_catole = _ponto(pref.id, -7.24510, -35.92010, "Praça do Açude — Bairro Catole")
+    p_bodocongo = _ponto(pref.id, -7.21960, -35.93760, "Av. Manoel Tavares — Bodocongó")
+    p_liberdade = _ponto(pref.id, -7.21170, -35.90310, "Av. Floriano Peixoto — Liberdade")
+    p_jose_pin = _ponto(pref.id, -7.22660, -35.87450, "Rua Cônego Rolim — José Pinheiro")
+    p_mirande = _ponto(pref.id, -7.28950, -35.95200, "Praça Central — Galante (distrito)")
+    p_queimadas = _ponto(pref.id, -7.61860, -35.90050, "Terminal Rodoviário — Queimadas")
     p_cruz_armas = _ponto(pref.id, -7.23800, -35.88300, "Cruz das Armas — CG")
-    p_pedregal   = _ponto(pref.id, -7.20680, -35.89490, "Av. Dinamarca — Pedregal")
-    p_prata      = _ponto(pref.id, -7.23770, -35.87980, "Bairro Prata — CG")
+    _ponto(pref.id, -7.20680, -35.89490, "Av. Dinamarca — Pedregal")
+    p_prata = _ponto(pref.id, -7.23770, -35.87980, "Bairro Prata — CG")
 
     # Casas dos alunos (pontos de embarque individuais)
     casas = [
@@ -338,13 +343,15 @@ def seed_demo_data() -> None:
     ufcg = _inst(
         "Universidade Federal de Campina Grande (UFCG)",
         TipoInstituicao.UNIVERSIDADE_PUBLICA,
-        -7.21676, -35.90820,
+        -7.21676,
+        -35.90820,
         "UFCG Campus I",
     )
     uepb = _inst(
         "Universidade Estadual da Paraíba (UEPB)",
         TipoInstituicao.UNIVERSIDADE_PUBLICA,
-        -7.23260, -35.89430,
+        -7.23260,
+        -35.89430,
         "UEPB Campus I",
     )
 
@@ -354,14 +361,38 @@ def seed_demo_data() -> None:
     bus1 = _onibus(pref.id, "PBX1A34", "Mercedes-Benz Sprinter 515", 30)
     bus2 = _onibus(pref.id, "PBX5B78", "Volare W9 Escolar", 44)
     bus3 = _onibus(pref.id, "PBX9C12", "Volkswagen 15.190 EOD", 35)
-    bus4 = _onibus(pref.id, "PBX3D56", "Marcopolo Viale",        40)
+    bus4 = _onibus(pref.id, "PBX3D56", "Marcopolo Viale", 40)
 
     # ── 6. Motoristas ─────────────────────────────────────────────────────────
     print("Creating drivers...")
 
-    mot1 = _motorista(pref.id, "Carlos Eduardo Amorim",    "carlos@buska.app",    "45678912301", "83999880001", "01234567890", pw)
-    mot2 = _motorista(pref.id, "Silvio Dantas de Oliveira", "silvio@buska.app",   "56789012302", "83999880002", "09876543211", pw)
-    mot3 = _motorista(pref.id, "Rosângela Feitosa Lima",   "rosangela@buska.app", "67890123403", "83999880003", "11223344551", pw)
+    mot1 = _motorista(
+        pref.id,
+        "Carlos Eduardo Amorim",
+        "carlos@buska.app",
+        "45678912301",
+        "83999880001",
+        "01234567890",
+        pw,
+    )
+    mot2 = _motorista(
+        pref.id,
+        "Silvio Dantas de Oliveira",
+        "silvio@buska.app",
+        "56789012302",
+        "83999880002",
+        "09876543211",
+        pw,
+    )
+    mot3 = _motorista(
+        pref.id,
+        "Rosângela Feitosa Lima",
+        "rosangela@buska.app",
+        "67890123403",
+        "83999880003",
+        "11223344551",
+        pw,
+    )
 
     db.session.flush()
 
@@ -402,35 +433,174 @@ def seed_demo_data() -> None:
     print("Creating 20 students...")
 
     nomes = [
-        ("Ana Carla Bezerra",    "aluno01@buska.app", "11111111101", "83988010001", "2024001", ufcg.id),
-        ("Bruno Sousa Melo",     "aluno02@buska.app", "22222222202", "83988010002", "2024002", ufcg.id),
-        ("Camila Torres Lima",   "aluno03@buska.app", "33333333303", "83988010003", "2024003", uepb.id),
-        ("Daniel Rocha Neto",    "aluno04@buska.app", "44444444404", "83988010004", "2024004", ufcg.id),
-        ("Elaine Vasconcelos",   "aluno05@buska.app", "55555555505", "83988010005", "2024005", ufcg.id),
-        ("Felipe Araújo Costa",  "aluno06@buska.app", "66666666606", "83988010006", "2024006", ufcg.id),
-        ("Gabriela Cunha Dias",  "aluno07@buska.app", "77777777707", "83988010007", "2024007", uepb.id),
-        ("Hugo Ferreira Braga",  "aluno08@buska.app", "88888888808", "83988010008", "2024008", uepb.id),
-        ("Isabela Martins Paz",  "aluno09@buska.app", "99999999909", "83988010009", "2024009", ufcg.id),
-        ("João Victor Leal",     "aluno10@buska.app", "10101010110", "83988010010", "2024010", ufcg.id),
-        ("Karen Alves Freitas",  "aluno11@buska.app", "11011011111", "83988010011", "2024011", uepb.id),
-        ("Lucas Barbosa Lima",   "aluno12@buska.app", "12012012212", "83988010012", "2024012", uepb.id),
-        ("Mariana Vieira Santos","aluno13@buska.app", "13013013313", "83988010013", "2024013", ufcg.id),
-        ("Nathan Queiroz Brito", "aluno14@buska.app", "14014014414", "83988010014", "2024014", ufcg.id),
-        ("Olivia Pessoa Alencar","aluno15@buska.app", "15015015515", "83988010015", "2024015", ufcg.id),
-        ("Pedro Cavalcanti Luz", "aluno16@buska.app", "16016016616", "83988010016", "2024016", uepb.id),
-        ("Quinn Ribeiro Maia",   "aluno17@buska.app", "17017017717", "83988010017", "2024017", uepb.id),
-        ("Renata Castro Farias", "aluno18@buska.app", "18018018818", "83988010018", "2024018", ufcg.id),
-        ("Samuel Lopes Correia", "aluno19@buska.app", "19019019919", "83988010019", "2024019", ufcg.id),
-        ("Tânia Moura Henrique", "aluno20@buska.app", "20020020020", "83988010020", "2024020", uepb.id),
+        (
+            "Ana Carla Bezerra",
+            "aluno01@buska.app",
+            "11111111101",
+            "83988010001",
+            "2024001",
+            ufcg.id,
+        ),
+        ("Bruno Sousa Melo", "aluno02@buska.app", "22222222202", "83988010002", "2024002", ufcg.id),
+        (
+            "Camila Torres Lima",
+            "aluno03@buska.app",
+            "33333333303",
+            "83988010003",
+            "2024003",
+            uepb.id,
+        ),
+        (
+            "Daniel Rocha Neto",
+            "aluno04@buska.app",
+            "44444444404",
+            "83988010004",
+            "2024004",
+            ufcg.id,
+        ),
+        (
+            "Elaine Vasconcelos",
+            "aluno05@buska.app",
+            "55555555505",
+            "83988010005",
+            "2024005",
+            ufcg.id,
+        ),
+        (
+            "Felipe Araújo Costa",
+            "aluno06@buska.app",
+            "66666666606",
+            "83988010006",
+            "2024006",
+            ufcg.id,
+        ),
+        (
+            "Gabriela Cunha Dias",
+            "aluno07@buska.app",
+            "77777777707",
+            "83988010007",
+            "2024007",
+            uepb.id,
+        ),
+        (
+            "Hugo Ferreira Braga",
+            "aluno08@buska.app",
+            "88888888808",
+            "83988010008",
+            "2024008",
+            uepb.id,
+        ),
+        (
+            "Isabela Martins Paz",
+            "aluno09@buska.app",
+            "99999999909",
+            "83988010009",
+            "2024009",
+            ufcg.id,
+        ),
+        ("João Victor Leal", "aluno10@buska.app", "10101010110", "83988010010", "2024010", ufcg.id),
+        (
+            "Karen Alves Freitas",
+            "aluno11@buska.app",
+            "11011011111",
+            "83988010011",
+            "2024011",
+            uepb.id,
+        ),
+        (
+            "Lucas Barbosa Lima",
+            "aluno12@buska.app",
+            "12012012212",
+            "83988010012",
+            "2024012",
+            uepb.id,
+        ),
+        (
+            "Mariana Vieira Santos",
+            "aluno13@buska.app",
+            "13013013313",
+            "83988010013",
+            "2024013",
+            ufcg.id,
+        ),
+        (
+            "Nathan Queiroz Brito",
+            "aluno14@buska.app",
+            "14014014414",
+            "83988010014",
+            "2024014",
+            ufcg.id,
+        ),
+        (
+            "Olivia Pessoa Alencar",
+            "aluno15@buska.app",
+            "15015015515",
+            "83988010015",
+            "2024015",
+            ufcg.id,
+        ),
+        (
+            "Pedro Cavalcanti Luz",
+            "aluno16@buska.app",
+            "16016016616",
+            "83988010016",
+            "2024016",
+            uepb.id,
+        ),
+        (
+            "Quinn Ribeiro Maia",
+            "aluno17@buska.app",
+            "17017017717",
+            "83988010017",
+            "2024017",
+            uepb.id,
+        ),
+        (
+            "Renata Castro Farias",
+            "aluno18@buska.app",
+            "18018018818",
+            "83988010018",
+            "2024018",
+            ufcg.id,
+        ),
+        (
+            "Samuel Lopes Correia",
+            "aluno19@buska.app",
+            "19019019919",
+            "83988010019",
+            "2024019",
+            ufcg.id,
+        ),
+        (
+            "Tânia Moura Henrique",
+            "aluno20@buska.app",
+            "20020020020",
+            "83988010020",
+            "2024020",
+            uepb.id,
+        ),
     ]
 
     # Realistic adult birth years: 1998–2005 (ages 20–27 in 2026)
     adult_dobs = [
-        date(2001, 3, 12), date(2000, 7, 25), date(2002, 11, 4),  date(1999, 1, 18),
-        date(2003, 6, 30), date(2001, 9, 14), date(2000, 4, 22),  date(2002, 8, 9),
-        date(2003, 2, 17), date(1998, 12, 3), date(2004, 5, 28),  date(2001, 10, 7),
-        date(2000, 3, 19), date(2002, 7, 11), date(1999, 8, 24),  date(2003, 1, 5),
-        date(2001, 6, 16), date(2000, 11, 29),
+        date(2001, 3, 12),
+        date(2000, 7, 25),
+        date(2002, 11, 4),
+        date(1999, 1, 18),
+        date(2003, 6, 30),
+        date(2001, 9, 14),
+        date(2000, 4, 22),
+        date(2002, 8, 9),
+        date(2003, 2, 17),
+        date(1998, 12, 3),
+        date(2004, 5, 28),
+        date(2001, 10, 7),
+        date(2000, 3, 19),
+        date(2002, 7, 11),
+        date(1999, 8, 24),
+        date(2003, 1, 5),
+        date(2001, 6, 16),
+        date(2000, 11, 29),
     ]
     # Last 2 are minors (born 2009–2010, ages 15–16 in 2026)
     minor_dobs = [date(2009, 5, 15), date(2010, 2, 8)]
@@ -442,12 +612,20 @@ def seed_demo_data() -> None:
         is_minor_demo = i >= 18
         status = UserStatus.PENDING_APPROVAL if is_minor_demo else UserStatus.ACTIVE
         nome_responsavel = f"José {nome.split()[0]}" if is_minor_demo else None
-        cpf_responsavel  = f"9{cpf[1:]}" if is_minor_demo else None
+        cpf_responsavel = f"9{cpf[1:]}" if is_minor_demo else None
         email_responsavel = f"resp{i+1}@buska.app" if is_minor_demo else None
         guardian_consented_at = datetime.now(UTC) if is_minor_demo else None
 
         a = _aluno(
-            pref.id, nome, email, cpf, tel, pw, mat, inst_id, casas[i].id,
+            pref.id,
+            nome,
+            email,
+            cpf,
+            tel,
+            pw,
+            mat,
+            inst_id,
+            casas[i].id,
             status=status,
             nome_responsavel=nome_responsavel,
             cpf_responsavel=cpf_responsavel,
@@ -489,7 +667,7 @@ def seed_demo_data() -> None:
     for delta in range(1, 5):
         d = today - timedelta(days=delta)
         h_inicio = _dt(d, 5, 30)
-        h_fim    = _dt(d, 7, 45)
+        h_fim = _dt(d, 7, 45)
         v = _viagem(hor_a_ida, mot1, bus1, d, StatusViagem.FINALIZADA, h_inicio, h_fim)
         viagens_fin.append(v)
 
@@ -498,33 +676,34 @@ def seed_demo_data() -> None:
     # Confirmar alunos em viagens finalizadas
     pontos_embarque_a = [p_mirande, p_catole, p_terminal, p_mirande, p_catole]
     for v in viagens_fin[:2]:
-        for aluno, ponto in zip(alunos[:5], pontos_embarque_a):
+        for aluno, ponto in zip(alunos[:5], pontos_embarque_a, strict=False):
             _confirmar(v, aluno, ponto, confirmado=True)
 
     # Viagem finalizada de rota B (3 dias atrás)
     d3 = today - timedelta(days=3)
-    vb_fin = _viagem(hor_b_ida, mot2, bus2, d3, StatusViagem.FINALIZADA,
-                     _dt(d3, 6, 0), _dt(d3, 7, 30))
+    vb_fin = _viagem(
+        hor_b_ida, mot2, bus2, d3, StatusViagem.FINALIZADA, _dt(d3, 6, 0), _dt(d3, 7, 30)
+    )
     db.session.flush()
-    for aluno, ponto in zip(alunos[5:10], [p_bodocongo, p_liberdade] * 3):
+    for aluno, ponto in zip(alunos[5:10], [p_bodocongo, p_liberdade] * 3, strict=False):
         _confirmar(vb_fin, aluno, ponto)
 
     # CANCELADAS
     vc1 = _viagem(hor_c_ida, mot3, bus3, today - timedelta(days=2), StatusViagem.CANCELADA)
-    vc2 = _viagem(hor_d_tarde, mot1, bus4, today - timedelta(days=1), StatusViagem.CANCELADA)
+    _viagem(hor_d_tarde, mot1, bus4, today - timedelta(days=1), StatusViagem.CANCELADA)
 
     # EM_ANDAMENTO (hoje)
-    v_em1 = _viagem(hor_a_ida, mot1, bus1, today, StatusViagem.EM_ANDAMENTO,
-                    _dt(today, 5, 30), None)
-    v_em2 = _viagem(hor_b_ida, mot2, bus2, today, StatusViagem.EM_ANDAMENTO,
-                    _dt(today, 6, 0), None)
+    v_em1 = _viagem(
+        hor_a_ida, mot1, bus1, today, StatusViagem.EM_ANDAMENTO, _dt(today, 5, 30), None
+    )
+    v_em2 = _viagem(hor_b_ida, mot2, bus2, today, StatusViagem.EM_ANDAMENTO, _dt(today, 6, 0), None)
 
     db.session.flush()
 
     # Confirmações em andamento
-    for aluno, ponto in zip(alunos[:5], pontos_embarque_a):
+    for aluno, ponto in zip(alunos[:5], pontos_embarque_a, strict=False):
         _confirmar(v_em1, aluno, ponto)
-    for aluno, ponto in zip(alunos[5:10], [p_bodocongo, p_liberdade] * 3):
+    for aluno, ponto in zip(alunos[5:10], [p_bodocongo, p_liberdade] * 3, strict=False):
         _confirmar(v_em2, aluno, ponto)
 
     # AGENDADAS (próximos 3 dias)
@@ -539,32 +718,36 @@ def seed_demo_data() -> None:
 
     # Confirmar alguns alunos em viagens agendadas
     for v in viagens_ag[:2]:
-        for aluno, ponto in zip(alunos[:3], pontos_embarque_a[:3]):
+        for aluno, ponto in zip(alunos[:3], pontos_embarque_a[:3], strict=False):
             _confirmar(v, aluno, ponto)
 
     # ── 11. Ocorrências ───────────────────────────────────────────────────────
     print("Creating occurrences...")
 
     _ocorrencia(
-        alunos[0].id, v_em1.id,
+        alunos[0].id,
+        v_em1.id,
         TipoOcorrencia.SUPERLOTACAO,
         "O ônibus chegou lotado em Galante hoje — não consegui embarcar.",
         StatusOcorrencia.ABERTA,
     )
     _ocorrencia(
-        alunos[5].id, vb_fin.id,
+        alunos[5].id,
+        vb_fin.id,
         TipoOcorrencia.ATRASO,
         "Ônibus chegou 25 minutos atrasado na parada de Bodocongó.",
         StatusOcorrencia.RESOLVIDA,
     )
     _ocorrencia(
-        mot3.id, vc1.id,
+        mot3.id,
+        vc1.id,
         TipoOcorrencia.OUTRO,
         "Problema mecânico no motor — solicitei guincho. Viagem cancelada.",
         StatusOcorrencia.RESOLVIDA,
     )
     _ocorrencia(
-        alunos[10].id, None,
+        alunos[10].id,
+        None,
         TipoOcorrencia.COMPORTAMENTO,
         "Motorista ignorou parada combinada em Cruz das Armas (semana passada).",
         StatusOcorrencia.ABERTA,
@@ -578,7 +761,8 @@ def seed_demo_data() -> None:
             aluno.id,
             "🚌 Viagem Iniciada!",
             "Carlos iniciou a rota Galante → UFCG. Acompanhe no mapa!",
-            lida=True, dias_atras=1,
+            lida=True,
+            dias_atras=1,
         )
 
     for aluno in alunos[5:10]:
@@ -586,7 +770,8 @@ def seed_demo_data() -> None:
             aluno.id,
             "⏰ Lembrete de Viagem",
             "Sua viagem pela rota Bodocongó → UEPB começa amanhã às 06:00.",
-            lida=False, dias_atras=0,
+            lida=False,
+            dias_atras=0,
         )
 
     for aluno in alunos[:3]:
@@ -594,20 +779,23 @@ def seed_demo_data() -> None:
             aluno.id,
             "⚠️ Aviso do Motorista",
             "Pequeno atraso previsto hoje — trânsito na Av. Manoel Tavares.",
-            lida=False, dias_atras=0,
+            lida=False,
+            dias_atras=0,
         )
 
     _notificacao(
         gestor.id,
         "📋 Nova Ocorrência Registrada",
         "O aluno Ana Carla reportou superlotação na rota Galante → UFCG.",
-        lida=False, dias_atras=0,
+        lida=False,
+        dias_atras=0,
     )
     _notificacao(
         gestor.id,
         "✅ Ocorrência Resolvida",
         "A ocorrência de atraso na rota Bodocongó → UEPB foi marcada como resolvida.",
-        lida=True, dias_atras=3,
+        lida=True,
+        dias_atras=3,
     )
 
     db.session.commit()
@@ -639,6 +827,7 @@ def seed_demo_data() -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def seed_database() -> None:
     with app.app_context():
