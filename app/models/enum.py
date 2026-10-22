@@ -61,3 +61,9 @@ class TipoOcorrencia(enum.Enum):
 class StatusOcorrencia(enum.Enum):
     ABERTA = "ABERTA"
     RESOLVIDA = "RESOLVIDA"
+
+
+class TipoFeedback(enum.Enum):
+    BUG = "BUG"
+    SUGESTAO = "SUGESTAO"
+    DUVIDA = "DUVIDA"
