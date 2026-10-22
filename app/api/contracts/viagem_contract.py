@@ -68,6 +68,18 @@ def register_models(api):
             "nome": fields.String(description="Nome do aluno"),
             "confirmacao": fields.Boolean(description="Confirmado"),
             "ponto_embarque": fields.String(description="UUID do ponto de embarque"),
+            "instituicao": fields.Nested(
+                api.model(
+                    "ViagemAlunoInstituicaoResponse",
+                    {
+                        "id": fields.String(description="UUID da instituição"),
+                        "nome": fields.String(description="Nome da instituição"),
+                        "tipo": fields.String(description="Tipo (ex: Universidade Pública)"),
+                    },
+                ),
+                allow_null=True,
+                description="Instituição de ensino do aluno (null quando não tem)",
+            ),
         },
     )
 

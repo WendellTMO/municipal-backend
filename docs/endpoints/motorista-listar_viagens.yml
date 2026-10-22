@@ -51,6 +51,31 @@ responses:
             type: string
             example: "ida"
             description: "Tipo da viagem (ex: ida, volta)."
+          alunos:
+            type: array
+            description: Alunos da viagem. Cada item traz a instituição de ensino do aluno.
+            items:
+              type: object
+              properties:
+                aluno_id:
+                  type: string
+                nome:
+                  type: string
+                confirmacao:
+                  type: boolean
+                instituicao:
+                  type: object
+                  nullable: true
+                  description: Instituição do aluno, ou null quando não tem.
+                  properties:
+                    id:
+                      type: string
+                    nome:
+                      type: string
+                      example: "Universidade Federal de Campina Grande (UFCG)"
+                    tipo:
+                      type: string
+                      example: "Universidade Pública"
     examples:
       application/json:
         - id: 1
