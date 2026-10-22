@@ -1,0 +1,65 @@
+---
+tags:
+  - Rotas
+summary: Listar pontos de uma rota
+description: |
+  Retorna os pontos da rota em ordem de parada.
+  Cada ponto traz a instituição de ensino vinculada a ele (`instituicao`),
+  ou `null` quando não há. O app do motorista usa isso ao iniciar a viagem.
+  Requer um **JWT token** válido e que a rota seja da prefeitura do usuário.
+operationId: listarPontosRota
+security:
+  - BearerAuth: []
+parameters:
+  - in: path
+    name: id
+    required: true
+    type: string
+    description: UUID da rota.
+responses:
+  200:
+    description: Pontos da rota.
+    schema:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 2
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: "6f0c1c52-5f6e-4b0e-9a57-0c3d8d1f7a10"
+              apelido:
+                type: string
+                example: "Terminal de Integração CG"
+              latitude:
+                type: number
+                example: -7.2305
+              longitude:
+                type: number
+                example: -35.8809
+              ordem:
+                type: integer
+                example: 1
+              instituicao:
+                type: object
+                nullable: true
+                description: Instituição de ensino no ponto, ou null.
+                properties:
+                  id:
+                    type: string
+                    example: "0a4b9d8e-2c1f-4a77-8e35-9d6b1c2f3e44"
+                  nome:
+                    type: string
+                    example: "Universidade Federal de Campina Grande (UFCG)"
+                  tipo:
+                    type: string
+                    example: "Universidade Pública"
+  403:
+    description: Rota de outra prefeitura.
+  404:
+    description: Rota não encontrada.
