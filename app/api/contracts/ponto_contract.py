@@ -36,6 +36,15 @@ def register_models(api):
         },
     )
 
+    ponto_instituicao_response = api.model(
+        "PontoInstituicaoResponse",
+        {
+            "id": fields.String(description="UUID da instituição"),
+            "nome": fields.String(description="Nome da instituição"),
+            "tipo": fields.String(description="Tipo (ex: Universidade Pública)"),
+        },
+    )
+
     ponto_flat_response = api.model(
         "PontoFlatResponse",
         {
@@ -44,6 +53,11 @@ def register_models(api):
             "latitude": fields.Float(description="Latitude"),
             "longitude": fields.Float(description="Longitude"),
             "ordem": fields.Integer(description="Ordem"),
+            "instituicao": fields.Nested(
+                ponto_instituicao_response,
+                allow_null=True,
+                description="Instituição de ensino no ponto (null quando não há)",
+            ),
         },
     )
 

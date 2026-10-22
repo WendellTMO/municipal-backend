@@ -37,12 +37,20 @@ class PontoResponseSchema(BaseSchema):
     instituicao = fields.String(dump_default=None)
 
 
+class PontoInstituicaoResponseSchema(BaseSchema):
+    id = fields.String()
+    nome = fields.String()
+    tipo = fields.String()
+
+
 class PontoFlatResponseSchema(BaseSchema):
     id = fields.String()
     apelido = fields.String()
     latitude = fields.Float()
     longitude = fields.Float()
     ordem = fields.Integer()
+    # Só vem preenchido em GET /rotas/{id}/pontos; nos demais usos o campo é omitido.
+    instituicao = fields.Nested(PontoInstituicaoResponseSchema, allow_none=True)
 
 
 class PontoFlatListResponseSchema(BaseSchema):

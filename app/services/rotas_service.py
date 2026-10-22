@@ -3,6 +3,8 @@
 import logging
 from typing import Any
 
+from sqlalchemy.orm import joinedload
+
 from app.core.exceptions import (
     ForbiddenError,
     NotFoundError,
@@ -507,11 +509,24 @@ def delete_rota(user_id: str, rota_id: str) -> None:
 def get_pontos_by_rota(user_id: str, rota_id: str) -> list[dict[str, Any]]:
     _get_rota_do_tenant(user_id, rota_id)
 
-    rota_pontos = RotaPonto.query.filter_by(rota_id=rota_id).order_by(RotaPonto.ordem.asc()).all()
+    # joinedload traz ponto e instituição na mesma query (evita N+1)
+    rota_pontos = (
+        RotaPonto.query.filter_by(rota_id=rota_id)
+        .options(joinedload(RotaPonto.ponto).joinedload(Ponto.instituicao))
+        .order_by(RotaPonto.ordem.asc())
+        .all()
+    )
 
     resultado = []
     for rp in rota_pontos:
         ponto = rp.ponto
+        instituicao = None
+        if ponto.instituicao:
+            instituicao = {
+                "id": str(ponto.instituicao.id),
+                "nome": ponto.instituicao.nome,
+                "tipo": ponto.instituicao.tipo.value,
+            }
         resultado.append(
             {
                 "id": str(ponto.id),
@@ -519,6 +534,7 @@ def get_pontos_by_rota(user_id: str, rota_id: str) -> list[dict[str, Any]]:
                 "latitude": float(ponto.latitude),
                 "longitude": float(ponto.longitude),
                 "ordem": rp.ordem,
+                "instituicao": instituicao,
             }
         )
 
