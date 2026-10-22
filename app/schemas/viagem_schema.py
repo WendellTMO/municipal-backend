@@ -155,6 +155,17 @@ class ViagemAlunoConfirmacaoResponseSchema(BaseSchema):
     confirmacao = fields.Boolean()
     ponto_embarque = fields.String(attribute="ponto_embarque.apelido")
     ponto_destino = fields.String(attribute="ponto_destino.apelido")
+    instituicao = fields.Method("get_instituicao")
+
+    def get_instituicao(self, obj):
+        instituicao = obj.aluno.instituicao
+        if instituicao is None:
+            return None
+        return {
+            "id": str(instituicao.id),
+            "nome": instituicao.nome,
+            "tipo": instituicao.tipo.value,
+        }
 
 
 class ViagemPontoResponseSchema(BaseSchema):

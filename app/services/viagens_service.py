@@ -45,7 +45,9 @@ def _carga_da_listagem():
         joinedload(Viagem.horario_rota)
         .joinedload(HorarioRota.rota)
         .selectinload(Rota.alunos_inscritos),
-        selectinload(Viagem.alunos_confirmados),
+        selectinload(Viagem.alunos_confirmados)
+        .joinedload(AlunosConfirmados.aluno)
+        .joinedload(Aluno.instituicao),
         selectinload(Viagem.pontos_visitados),
     )
 
