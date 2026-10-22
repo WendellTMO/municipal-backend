@@ -718,7 +718,7 @@ def test_get_pontos_by_rota_retorna_pontos_ordenados(_db, gestor, rota, ponto):
     resultado = get_pontos_by_rota(str(gestor.user.id), str(rota.id))
 
     assert [p["ordem"] for p in resultado] == [1, 2]
-    assert set(resultado[0]) == {"id", "apelido", "latitude", "longitude", "ordem"}
+    assert set(resultado[0]) == {"id", "apelido", "latitude", "longitude", "ordem", "instituicao"}
     assert resultado[0]["id"] == str(ponto.id)
 
 
