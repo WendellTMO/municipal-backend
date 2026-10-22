@@ -1,0 +1,98 @@
+---
+tags:
+  - Feedback
+summary: Registrar relato de beta-tester
+description: |
+  Grava um relato (bug, sugestão ou dúvida) do usuário logado.
+  O usuário e a prefeitura vêm do token JWT, nunca do corpo.
+  O header `User-Agent` é gravado truncado em 300 caracteres.
+
+  **Mensagem:** obrigatória, sem espaços nas pontas, de 10 a 2000 caracteres.
+
+  **Ler os relatos mais recentes (direto no banco):**
+
+  ```sql
+  SELECT f.created_at, f.tipo, u.nome, u.role, u.email, f.tela, f.versao_app,
+         f.plataforma, f.mensagem
+  FROM feedback f
+  LEFT JOIN usuario u ON u.id = f.usuario_id
+  ORDER BY f.created_at DESC
+  LIMIT 50;
+  ```
+
+  `usuario_id` fica NULL quando a conta de quem enviou foi excluída. Por isso o join é LEFT.
+operationId: createFeedback
+security:
+  - BearerAuth: []
+parameters:
+  - in: header
+    name: Authorization
+    required: true
+    type: string
+    description: Bearer token for authentication.
+    example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...VN9JSIExAMPLEt0kENoTREAL"
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required:
+        - tipo
+        - mensagem
+      properties:
+        tipo:
+          type: string
+          enum: [BUG, SUGESTAO, DUVIDA]
+          example: BUG
+        mensagem:
+          type: string
+          minLength: 10
+          maxLength: 2000
+          example: O mapa não carrega na tela de rotas
+        tela:
+          type: string
+          maxLength: 100
+          nullable: true
+          example: Rotas
+        versao_app:
+          type: string
+          maxLength: 30
+          nullable: true
+          example: 0.9.1
+        plataforma:
+          type: string
+          enum: [android, ios, web]
+          nullable: true
+          example: android
+responses:
+  201:
+    description: Relato registrado.
+    schema:
+      type: object
+      properties:
+        id:
+          type: string
+          example: aef9fee6-72dd-4a64-9f0b-36050e9b24ca
+        message:
+          type: string
+          example: Feedback registrado
+  400:
+    description: Validation error (tipo ou mensagem inválidos).
+    schema:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: Erro de validação
+            details:
+              type: object
+              example:
+                mensagem: ["Length must be between 10 and 2000."]
+  401:
+    description: Unauthorized. Missing or invalid JWT token.
