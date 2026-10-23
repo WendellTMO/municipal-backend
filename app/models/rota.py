@@ -102,3 +102,22 @@ class RotaAluno(db.Model):
     )
 
     data_inscricao = db.Column(db.DateTime, server_default=db.func.now())
+
+
+class RotaInstituicaoOrdem(db.Model):
+    """Ordem em que o motorista visita as instituições de uma rota."""
+
+    __tablename__ = "rota_instituicao_ordem"
+    __table_args__ = (db.Index("idx_rota_instituicao_ordem_rota_ordem", "rota_id", "ordem"),)
+
+    rota_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("rota.id", ondelete="CASCADE"), primary_key=True
+    )
+    instituicao_id = db.Column(
+        UUID(as_uuid=True),
+        db.ForeignKey("instituicao.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    ordem = db.Column(db.Integer, nullable=False)
+
+    instituicao = relationship("Instituicao")

@@ -23,6 +23,12 @@ class RotaPontosAddRequestSchema(BaseSchema):
     pontos = fields.List(fields.Nested(RotaPontoAddRequestSchema), required=True)
 
 
+class RotaInstituicoesOrdemRequestSchema(BaseSchema):
+    """Schema for replacing the institution order of a route."""
+
+    instituicao_ids = fields.List(fields.UUID(), required=True)
+
+
 class RotaHorarioCreateRequestSchema(BaseSchema):
     """Schema for route schedule input."""
 
@@ -104,4 +110,16 @@ class RotaDetailResponseSchema(RotaResponseSchema):
 
 class RotaListResponseSchema(BaseSchema):
     items = fields.List(fields.Nested(RotaResponseSchema), required=True)
+    total = fields.Integer(required=True)
+
+
+class InstituicaoOrdemItemSchema(BaseSchema):
+    instituicao_id = fields.String()
+    nome = fields.String()
+    tipo = fields.String()
+    ordem = fields.Integer()
+
+
+class InstituicaoOrdemListResponseSchema(BaseSchema):
+    items = fields.List(fields.Nested(InstituicaoOrdemItemSchema), required=True)
     total = fields.Integer(required=True)
