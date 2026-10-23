@@ -129,7 +129,36 @@ def register_models(api):
         },
     )
 
+    instituicoes_ordem_request = api.model(
+        "RotaInstituicoesOrdemRequest",
+        {
+            "instituicao_ids": fields.List(
+                fields.String, required=True, description="UUIDs das instituições na ordem"
+            ),
+        },
+    )
+
+    instituicao_ordem_item = api.model(
+        "RotaInstituicaoOrdemItem",
+        {
+            "instituicao_id": fields.String(description="UUID da instituição"),
+            "nome": fields.String(description="Nome da instituição"),
+            "tipo": fields.String(description="Tipo (ex: Universidade Pública)"),
+            "ordem": fields.Integer(description="Posição, começando em 0"),
+        },
+    )
+
+    instituicoes_ordem_response = api.model(
+        "RotaInstituicoesOrdemResponse",
+        {
+            "items": fields.List(fields.Nested(instituicao_ordem_item)),
+            "total": fields.Integer(description="Total de instituições ordenadas"),
+        },
+    )
+
     return {
+        "rota_instituicoes_ordem_request": instituicoes_ordem_request,
+        "rota_instituicoes_ordem_response": instituicoes_ordem_response,
         "rota_create_request": rota_create_request,
         "rota_response": rota_response,
         "rota_update_request": rota_update_request,

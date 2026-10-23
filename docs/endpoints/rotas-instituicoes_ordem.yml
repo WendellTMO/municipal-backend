@@ -1,0 +1,62 @@
+---
+tags:
+  - Rotas
+summary: Ordem das instituições de uma rota
+description: |
+  GET devolve a ordem salva das instituições da rota (só o que já foi salvo).
+  PUT substitui a ordem inteira: apaga e regrava com ordem 0..n-1.
+  Lista vazia limpa a ordem. Ids repetidos, inexistentes ou de outra
+  prefeitura resultam em 400. O motorista usa isso ao iniciar a viagem.
+  Requer **JWT token** de gestor ou motorista da prefeitura da rota.
+operationId: ordemInstituicoesRota
+security:
+  - BearerAuth: []
+parameters:
+  - in: path
+    name: id
+    required: true
+    type: string
+    description: UUID da rota.
+  - in: body
+    name: body
+    description: Somente no PUT.
+    schema:
+      type: object
+      properties:
+        instituicao_ids:
+          type: array
+          items:
+            type: string
+          example: ["0a4b9d8e-2c1f-4a77-8e35-9d6b1c2f3e44"]
+responses:
+  200:
+    description: Ordem salva, ordenada por `ordem`.
+    schema:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 1
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              instituicao_id:
+                type: string
+                example: "0a4b9d8e-2c1f-4a77-8e35-9d6b1c2f3e44"
+              nome:
+                type: string
+                example: "Universidade Federal de Campina Grande (UFCG)"
+              tipo:
+                type: string
+                example: "Universidade Pública"
+              ordem:
+                type: integer
+                example: 0
+  400:
+    description: Ids repetidos, inexistentes ou de outra prefeitura.
+  403:
+    description: Usuário sem permissão ou rota de outra prefeitura.
+  404:
+    description: Rota não encontrada.

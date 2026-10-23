@@ -17,7 +17,9 @@ from app.schemas.ponto_schema import (
 from app.schemas.rota_schema import (
     RotaCreateRequestSchema,
     RotaDetailResponseSchema,
+    InstituicaoOrdemListResponseSchema,
     RotaInscricaoRequestSchema,
+    RotaInstituicoesOrdemRequestSchema,
     RotaListResponseSchema,
     RotaPontosAddRequestSchema,
     RotaResponseSchema,
@@ -46,6 +48,9 @@ horario_response_schema = HorarioResponseSchema()
 horario_list_response_schema = HorarioListResponseSchema()
 
 ponto_flat_list_response_schema = PontoFlatListResponseSchema()
+
+ordem_request_schema = RotaInstituicoesOrdemRequestSchema()
+ordem_response_schema = InstituicaoOrdemListResponseSchema()
 
 
 @api.route("/")
@@ -128,6 +133,30 @@ class RotaPontosResource(Resource):
 
         rotas_service.add_ponto(current_user_id, id, payload)
         return {"message": "Pontos adicionados com sucesso"}, 200
+
+
+@api.route("/<string:id>/instituicoes/ordem")
+class RotaInstituicoesOrdemResource(Resource):
+    @api.doc("get_rota_instituicoes_ordem")
+    @api.response(200, "Success", models["rota_instituicoes_ordem_response"])
+    @jwt_required()
+    def get(self, id: str) -> tuple[dict[str, Any], int]:
+        current_user_id = get_jwt_identity()
+        itens = rotas_service.get_ordem_instituicoes(current_user_id, id)
+        return ordem_response_schema.dump(list_envelope(itens)), 200
+
+    @api.doc("set_rota_instituicoes_ordem")
+    @api.expect(models["rota_instituicoes_ordem_request"])
+    @api.response(200, "Success", models["rota_instituicoes_ordem_response"])
+    @jwt_required()
+    def put(self, id: str) -> tuple[dict[str, Any], int]:
+        current_user_id = get_jwt_identity()
+        data = request.get_json(silent=True) or {}
+        payload = ordem_request_schema.load(data)
+        itens = rotas_service.set_ordem_instituicoes(
+            current_user_id, id, payload["instituicao_ids"]
+        )
+        return ordem_response_schema.dump(list_envelope(itens)), 200
 
 
 @api.route("/<string:id>/horarios")

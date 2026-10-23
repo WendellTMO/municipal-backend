@@ -13,8 +13,15 @@ from app.core.exceptions import (
 from app.core.transaction import transactional
 from app.models.base import db
 from app.models.enum import DiaDaSemana, SentidoViagem, UserRole
-from app.models.geo import Ponto
-from app.models.rota import DiasOperacao, HorarioRota, Rota, RotaAluno, RotaPonto
+from app.models.geo import Instituicao, Ponto
+from app.models.rota import (
+    DiasOperacao,
+    HorarioRota,
+    Rota,
+    RotaAluno,
+    RotaInstituicaoOrdem,
+    RotaPonto,
+)
 from app.models.user import User
 from app.services.viagens_service import gerar_viagens_periodo
 from app.utils import audit_logger, validate_uuid
@@ -539,3 +546,76 @@ def get_pontos_by_rota(user_id: str, rota_id: str) -> list[dict[str, Any]]:
         )
 
     return resultado
+
+
+def _lista_ordem_instituicoes(rota_id: Any) -> list[dict[str, Any]]:
+    # joinedload traz a instituição na mesma query (evita N+1)
+    linhas = (
+        RotaInstituicaoOrdem.query.filter_by(rota_id=rota_id)
+        .options(joinedload(RotaInstituicaoOrdem.instituicao))
+        .order_by(RotaInstituicaoOrdem.ordem.asc())
+        .all()
+    )
+    resultado = []
+    for linha in linhas:
+        resultado.append(
+            {
+                "instituicao_id": str(linha.instituicao_id),
+                "nome": linha.instituicao.nome,
+                "tipo": linha.instituicao.tipo.value,
+                "ordem": linha.ordem,
+            }
+        )
+    return resultado
+
+
+def _exige_gestor_ou_motorista(user_id: str) -> None:
+    user = db.session.get(User, user_id)
+    if not user or user.role not in (UserRole.GESTOR, UserRole.MOTORISTA):
+        raise ForbiddenError("Permissão negada")
+
+
+def get_ordem_instituicoes(user_id: str, rota_id: str) -> list[dict[str, Any]]:
+    """Ordem salva das instituições da rota (só o que já foi salvo).
+
+    Raises: NotFoundError, ForbiddenError
+    """
+    rota = _get_rota_do_tenant(user_id, rota_id)
+    _exige_gestor_ou_motorista(user_id)
+    return _lista_ordem_instituicoes(rota.id)
+
+
+def set_ordem_instituicoes(
+    user_id: str, rota_id: str, instituicao_ids: list[Any]
+) -> list[dict[str, Any]]:
+    """Substitui a ordem inteira das instituições da rota (0..n-1).
+
+    Raises: NotFoundError, ForbiddenError, ValidationError
+    """
+    rota = _get_rota_do_tenant(user_id, rota_id)
+    _exige_gestor_ou_motorista(user_id)
+
+    ids: list[Any] = []
+    vistos: set[Any] = set()
+    for item in instituicao_ids:
+        if item in vistos:
+            raise ValidationError("Instituições repetidas na lista")
+        vistos.add(item)
+        ids.append(item)
+
+    if ids:
+        encontradas = Instituicao.query.filter(Instituicao.id.in_(ids)).all()
+        if len(encontradas) != len(ids):
+            raise ValidationError("Instituição não encontrada")
+        for inst in encontradas:
+            if inst.prefeitura_id != rota.prefeitura_id:
+                raise ValidationError("Instituição de outra prefeitura")
+
+    with transactional():
+        RotaInstituicaoOrdem.query.filter_by(rota_id=rota.id).delete()
+        for posicao, inst_id in enumerate(ids):
+            db.session.add(
+                RotaInstituicaoOrdem(rota_id=rota.id, instituicao_id=inst_id, ordem=posicao)
+            )
+
+    return _lista_ordem_instituicoes(rota.id)
