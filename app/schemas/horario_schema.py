@@ -20,8 +20,12 @@ class HorarioCreateRequestSchema(BaseSchema):
 class HorarioResponseSchema(BaseSchema):
     id = fields.String()
     horario_saida = fields.Time()
-    sentido = fields.String()
+    sentido = fields.Method("get_sentido")
     dias = fields.Method("get_dias")
+
+    def get_sentido(self, obj):
+        # fields.String sobre o enum devolvia "SentidoViagem.IDA"
+        return obj.sentido.value
 
     def get_dias(self, obj):
         return [d.dia.value if hasattr(d.dia, "value") else d.dia for d in obj.dias]
