@@ -12,10 +12,12 @@ fi
 cp "$ENV_FILE" .env.prod
 chmod 600 .env.prod
 
-# Carrega as variáveis só para o shell usar nos comandos abaixo
-set -a
-source .env.prod
-set +a
+# Não usar "source": FIREBASE_CREDENTIALS é um JSON e quebraria o shell
+DB_USER=$(grep '^DB_USER=' .env.prod | cut -d= -f2-)
+DB_NAME=$(grep '^DB_NAME=' .env.prod | cut -d= -f2-)
+
+# Mesmo nome de projeto do deploy antigo, para reaproveitar o volume do banco
+export COMPOSE_PROJECT_NAME=buska-backend
 
 export API_IMAGE="buska-backend:demo-$(git rev-parse --short HEAD)"
 docker build -t "$API_IMAGE" .
@@ -31,10 +33,10 @@ done
 docker exec buska_db_prod psql -U "$DB_USER" -d "$DB_NAME" \
   -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
 
-# Migrações rodam no host contra a porta publicada do banco, como no ci.yml
-export DB_HOST=localhost DB_PORT=5432
-uv sync --frozen
-uv run alembic upgrade head
+# A imagem não traz migrations/, então monta a pasta do clone só para este comando
+docker-compose -f docker-compose.prod.yml --env-file .env.prod run --rm --no-deps \
+  -v "$PWD/migrations:/app/migrations:ro" -v "$PWD/alembic.ini:/app/alembic.ini:ro" \
+  api alembic upgrade head
 
 docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d api scheduler
 
