@@ -61,6 +61,11 @@ def test_envio_gera_link_e_pin_que_funcionam(gestor, client, mail, _db):
     pin = re.search(r"\(PIN\): (\d{6})", texto).group(1)
     assert "—" not in texto and "–" not in texto
     assert "<a href" in _corpo(smtp, "html")
+    assert "https://app.exemplo.test/buska.apk" in texto
+    assert "No iPhone, use o BusKá pelo navegador: https://app.exemplo.test" in texto
+    html = _corpo(smtp, "html")
+    assert 'href="https://app.exemplo.test/buska.apk"' in html
+    assert "Baixar o app para Android" in html
     assert smtp.return_value.__enter__.return_value.sendmail.call_args.args[1] == "ana@exemplo.test"
 
     _db.session.refresh(convite)

@@ -91,3 +91,18 @@ def test_send_email_sem_logo_nao_anexa_imagem(app, monkeypatch):
     bruto = _enviar(app, monkeypatch)
     assert "multipart/related" not in bruto
     assert "image/png" not in bruto
+
+
+def test_template_bloco_app_so_aparece_quando_informado():
+    assert "Baixe o app" not in _html()
+    pagina = _html(links_app=("https://buska.test/buska.apk", "https://buska.test"))
+    assert 'href="https://buska.test/buska.apk"' in pagina
+    assert "Baixar o app para Android" in pagina
+    assert "fontes desconhecidas" in pagina
+    assert "No iPhone, use o BusKá pelo navegador" in pagina
+    assert "—" not in pagina and "–" not in pagina
+
+
+def test_template_bloco_app_escapa_urls():
+    pagina = _html(links_app=('https://x.test/"><b>', "https://y.test/<i>"))
+    assert "<b>" not in pagina and "<i>" not in pagina
