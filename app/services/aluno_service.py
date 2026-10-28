@@ -25,6 +25,7 @@ from app.models.user import Aluno, Gestor, User
 from app.services.notificacao_service import NotificacaoService
 from app.utils import audit_logger, validate_cpf, validate_email, validate_password
 from app.utils.email_sender import send_email
+from app.utils.email_template import montar_email_html
 
 logger = logging.getLogger(__name__)
 
@@ -37,44 +38,38 @@ def enviar_email_consentimento_responsavel(aluno: Aluno) -> None:
     frontend_url = current_app.config.get("FRONTEND_URL", "http://localhost:8081")
     link = f"{frontend_url.rstrip('/')}/guardian-consent?token={aluno.guardian_token}"
 
-    subject = "Autorização necessária — BusKa"
+    subject = "Autorização necessária: BusKá"
     body_plain = (
         f"Olá!\n\n"
-        f"O(A) estudante {aluno.nome} solicitou cadastro no BusKa, "
+        f"O(A) estudante {aluno.nome} solicitou cadastro no BusKá, "
         f"aplicativo de transporte escolar.\n\n"
         f"Como responsável legal, você precisa autorizar o uso do app antes que o cadastro "
         f"seja enviado para análise do gestor municipal.\n\n"
         f"Clique no link abaixo para confirmar ou recusar:\n{link}\n\n"
         f"Este link é válido por 7 dias.\n\n"
-        f"Atenciosamente,\nEquipe BusKa"
+        f"Atenciosamente,\nEquipe BusKá"
     )
-    body_html = f"""
-    <div style="font-family:sans-serif;max-width:560px;margin:auto;padding:24px">
-      <h2 style="color:#0347D0">Autorização de Cadastro — BusKa</h2>
-      <p>Olá!</p>
-      <p>O(A) estudante <strong>{aluno.nome}</strong> solicitou cadastro no BusKa,
-         aplicativo de transporte escolar municipal.</p>
-      <p>Como responsável legal, sua autorização é necessária para que o cadastro
-         seja encaminhado ao gestor municipal.</p>
-      <a href="{link}"
-         style="display:inline-block;margin:16px 0;padding:14px 28px;
-                background:#0347D0;color:#fff;border-radius:8px;
-                text-decoration:none;font-weight:600">
-        Clique aqui para responder
-      </a>
-      <p style="color:#666;font-size:13px">
-        Se o botão não funcionar, copie e cole este link no seu navegador:<br>
-        <a href="{link}">{link}</a>
-      </p>
-      <p style="color:#666;font-size:13px">Este link expira em 7 dias.</p>
-    </div>
-    """
+    body_html = montar_email_html(
+        titulo="Autorização de cadastro",
+        preheader=f"{aluno.nome} pediu cadastro no BusKá e precisa da sua autorização.",
+        saudacao="Olá!",
+        paragrafos=[
+            f"O(A) estudante {aluno.nome} solicitou cadastro no BusKá, "
+            "aplicativo de transporte escolar municipal.",
+            "Como responsável legal, sua autorização é necessária para que o cadastro "
+            "seja encaminhado ao gestor municipal.",
+        ],
+        botao_texto="Clique aqui para responder",
+        botao_url=link,
+        validade="Este link expira em 7 dias.",
+    )
     try:
         send_email(
             to=aluno.email_responsavel,
             subject=subject,
             body_plain=body_plain,
             body_html=body_html,
+            logo_inline=True,
         )
     except Exception:
         logger.exception("Failed to send guardian consent email for aluno %s", aluno.id)

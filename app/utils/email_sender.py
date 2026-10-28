@@ -2,8 +2,10 @@
 
 import logging
 import smtplib
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from pathlib import Path
 
 from flask import current_app
 
@@ -11,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 SMTP_TIMEOUT_SECONDS = 10
+LOGO_PATH = Path(__file__).resolve().parent.parent / "static" / "email" / "logo-buska.png"
 
 
 def mail_configurado() -> bool:
@@ -30,9 +33,11 @@ def send_email(
     subject: str,
     body_plain: str,
     body_html: str | None = None,
+    logo_inline: bool = False,
 ) -> bool:
     """Envia e-mail pelo SMTP configurado. False se o e-mail não está configurado.
 
+    Com `logo_inline=True` o HTML pode usar `cid:logo-buska` (imagem anexada ao e-mail).
     Falha de SMTP continua propagando a exceção para o chamador decidir.
     """
     if not mail_configurado():
@@ -53,7 +58,15 @@ def send_email(
     msg["To"] = to
     msg.attach(MIMEText(body_plain, "plain", "utf-8"))
 
-    if body_html:
+    if body_html and logo_inline:
+        related = MIMEMultipart("related")
+        related.attach(MIMEText(body_html, "html", "utf-8"))
+        logo = MIMEImage(LOGO_PATH.read_bytes(), "png")
+        logo.add_header("Content-ID", "<logo-buska>")
+        logo.add_header("Content-Disposition", "inline", filename="logo-buska.png")
+        related.attach(logo)
+        msg.attach(related)
+    elif body_html:
         msg.attach(MIMEText(body_html, "html", "utf-8"))
 
     logger.info("Enviando e-mail para %s via %s:%s", to, mail_server, mail_port)

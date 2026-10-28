@@ -20,6 +20,7 @@ from app.models.password_reset import PasswordResetToken
 from app.models.user import Aluno, User
 from app.utils import audit_logger, validate_email, validate_password
 from app.utils.email_sender import send_email
+from app.utils.email_template import montar_email_html
 
 logger = logging.getLogger(__name__)
 
@@ -171,14 +172,22 @@ def request_password_reset(email_raw: str, base_url: str) -> None:
         "Se não foi você, ignore este e-mail.\n\n"
         "Equipe BusKá"
     )
-    body_html = (
-        f"<p>Olá, {user.nome}.</p>"
-        "<p>Você solicitou a recuperação de senha no BusKá.</p>"
-        f'<p><a href="{link}">Redefinir senha</a> (válido por 1 hora)</p>'
-        "<p>Se não foi você, ignore este e-mail.</p>"
-        "<p>Equipe BusKá</p>"
+    body_html = montar_email_html(
+        titulo="Recuperação de senha",
+        preheader="Use o link para redefinir sua senha do BusKá. Ele vale por 1 hora.",
+        saudacao=f"Olá, {user.nome}.",
+        paragrafos=["Você solicitou a recuperação de senha no BusKá."],
+        botao_texto="Redefinir senha",
+        botao_url=link,
+        validade="O link é válido por 1 hora. Se não foi você, ignore este e-mail.",
     )
-    send_email(to=email, subject=subject, body_plain=body_plain, body_html=body_html)
+    send_email(
+        to=email,
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        logo_inline=True,
+    )
 
 
 def reset_password(token: str, new_password: str) -> None:

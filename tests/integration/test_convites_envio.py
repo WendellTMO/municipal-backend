@@ -45,7 +45,7 @@ def _corpo(smtp_mock, tipo="plain"):
     """Texto do e-mail enviado, decodificado."""
     sendmail = smtp_mock.return_value.__enter__.return_value.sendmail
     mensagem = email.message_from_string(sendmail.call_args.args[2])
-    for parte in mensagem.get_payload():
+    for parte in mensagem.walk():
         if parte.get_content_subtype() == tipo:
             return parte.get_payload(decode=True).decode("utf-8")
     raise AssertionError("parte não encontrada")
