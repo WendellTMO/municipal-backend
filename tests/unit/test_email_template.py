@@ -28,6 +28,7 @@ def test_template_tem_botao_logo_preheader_e_link():
     assert "Previa do email" in pagina
     assert "Vale por 7 dias." in pagina
     assert "mensagem automática" in pagina
+    assert "gestão inteligente do transporte escolar municipal" in pagina
 
 
 def test_template_pin_so_aparece_quando_informado():

@@ -1,6 +1,7 @@
+from html import escape
 from typing import Any
 
-from flask import Response, request
+from flask import Response, current_app, request
 from flask_restx import Namespace, Resource
 
 from app.api.contracts import auth_contract
@@ -60,7 +61,8 @@ class AuthForgotPassword(Resource):
         email = (data.get("email") or "").strip()
         if not email:
             raise ValidationError("E-mail é obrigatório")
-        base_url = request.url_root.rstrip("/")
+        # URL pública configurada: request.url_root vira http:// atrás do nginx sem ProxyFix.
+        base_url = (current_app.config.get("FRONTEND_URL") or request.url_root).rstrip("/")
         auth_service.request_password_reset(email, base_url)
         return {
             "message": "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha."
@@ -84,8 +86,8 @@ def _reset_password_form_html(token: str, action_url: str) -> str:
 <body>
   <h1>Redefinir senha</h1>
   <p class="msg">Digite sua nova senha (mínimo 8 caracteres).</p>
-  <form method="POST" action="{action_url}">
-    <input type="hidden" name="token" value="{token}">
+  <form method="POST" action="{escape(action_url)}">
+    <input type="hidden" name="token" value="{escape(token)}">
     <input type="password" name="new_password" placeholder="Nova senha" required minlength="8" autocomplete="new-password">
     <input type="password" name="confirm_password" placeholder="Confirmar senha" required minlength="8" autocomplete="new-password">
     <button type="submit">Redefinir senha</button>
