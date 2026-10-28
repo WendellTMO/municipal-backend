@@ -114,6 +114,8 @@ uv run python scripts/convidar_csv.py scripts/exemplo_convites.csv             #
 
 Colunas: `nome` e `email` (obrigatórias), `telefone`, `instituicao` (nome) e `rota` (nome). O resultado sai por linha: CRIADO, RENOVADO, PULADO ou INVALIDO. Veja `scripts/exemplo_convites.csv`.
 
+`scripts/atualizar_agenda_demo.py` renova a agenda do banco de demonstração (viagens de hoje a hoje+6 por horário, viagem de hoje do Carlos em andamento, alunos das rotas A e B confirmados) sem duplicar viagens; recusa DB_HOST fora de localhost sem `--permitir-remoto`.
+
 ## 📁 Estrutura do Projeto
 
 ```
