@@ -7,7 +7,7 @@ import pytest
 
 from app.models.convite import ACEITO, CANCELADO, ENVIADO, EXPIRADO, PENDENTE, Convite
 from app.models.enum import TipoInstituicao, UserStatus
-from app.models.geo import Instituicao
+from app.models.geo import Instituicao, Ponto
 from app.models.rota import RotaAluno
 from app.models.user import Aluno
 from app.services import convite_service
@@ -212,7 +212,9 @@ def test_convite_pendente_nao_aceita_token_nenhum(gestor, client, _db):
     )
 
 
-def test_aceite_maior_de_idade_cria_aluno_ativo_com_ponto_e_rota(gestor, client, ponto, rota, _db):
+def test_aceite_maior_de_idade_cria_aluno_ativo_com_ponto_e_rota(
+    gestor, client, ponto, rota, rota_ponto, _db
+):
     convite, token, pin = _convite_enviado(
         _db, gestor, ponto_id=str(ponto.id), rota_id=str(rota.id)
     )
@@ -223,10 +225,11 @@ def test_aceite_maior_de_idade_cria_aluno_ativo_com_ponto_e_rota(gestor, client,
     aluno = _db.session.get(Aluno, r.get_json()["id"])
     assert aluno.status == UserStatus.ACTIVE
     assert aluno.signup_completed_at is not None
-    assert aluno.ponto_casa_id == ponto.id
+    assert aluno.ponto_casa_id is None
     assert aluno.cpf == CPF_A and aluno.telefone == "83999998888"
     assert aluno.prefeitura_id == gestor.user.prefeitura_id
-    assert RotaAluno.query.filter_by(rota_id=rota.id, aluno_id=aluno.id).count() == 1
+    inscricao = RotaAluno.query.filter_by(rota_id=rota.id, aluno_id=aluno.id).one()
+    assert inscricao.ponto_embarque_padrao_id == ponto.id
     _db.session.refresh(convite)
     assert convite.status == ACEITO and convite.aluno_id == aluno.id
     assert convite.termos_versao == convite_service.TERMOS_DE_USO_VERSAO
@@ -237,6 +240,51 @@ def test_aceite_maior_de_idade_cria_aluno_ativo_com_ponto_e_rota(gestor, client,
     assert login.status_code == 200
     # O link não serve duas vezes.
     assert _aceite(client, token, pin).status_code == 404
+
+
+def test_lote_valida_ponto_contra_a_rota(gestor, prefeitura, ponto, rota, rota_ponto, _db):
+    fora = Ponto(prefeitura_id=prefeitura.id, latitude=-7.2, longitude=-35.9, apelido="Fora")
+    _db.session.add(fora)
+    _db.session.commit()
+    resp = _lote(
+        gestor,
+        [
+            {
+                "nome": "A",
+                "email": "a@exemplo.test",
+                "rota_id": str(rota.id),
+                "ponto_id": str(ponto.id),
+            },
+            {
+                "nome": "B",
+                "email": "b@exemplo.test",
+                "rota_id": str(rota.id),
+                "ponto_id": str(fora.id),
+            },
+            {"nome": "C", "email": "c@exemplo.test", "ponto_id": str(ponto.id)},
+        ],
+    )
+    itens = resp.get_json()["items"]
+    assert [i["resultado"] for i in itens] == ["CRIADO", "INVALIDO", "INVALIDO"]
+    assert "não pertence" in itens[1]["motivo"]
+    assert "exige uma rota" in itens[2]["motivo"]
+
+
+def test_validar_pin_devolve_ponto_id_e_apelido(gestor, client, ponto, rota, rota_ponto, _db):
+    _, token, pin = _convite_enviado(_db, gestor, ponto_id=str(ponto.id), rota_id=str(rota.id))
+    dados = client.post(f"/v1/convites/aceite/{token}/validar", json={"pin": pin}).get_json()
+    assert dados["ponto_id"] == str(ponto.id)
+    assert dados["ponto_apelido"] == ponto.apelido
+
+
+def test_aceite_ignora_ponto_que_saiu_da_rota(gestor, client, ponto, rota, rota_ponto, _db):
+    _, token, pin = _convite_enviado(_db, gestor, ponto_id=str(ponto.id), rota_id=str(rota.id))
+    _db.session.delete(rota_ponto)
+    _db.session.commit()
+    r = _aceite(client, token, pin)
+    assert r.status_code == 201
+    inscricao = RotaAluno.query.filter_by(rota_id=rota.id, aluno_id=r.get_json()["id"]).one()
+    assert inscricao.ponto_embarque_padrao_id is None
 
 
 def test_aceite_menor_segue_fluxo_do_responsavel(gestor, client, _db):

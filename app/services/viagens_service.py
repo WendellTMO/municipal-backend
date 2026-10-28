@@ -144,6 +144,14 @@ def get_proximas_viagens_aluno(user_id: str) -> list[Viagem]:
 
     viagens = query.all()
 
+    # Ponto padrão do aluno em cada rota, para o app confirmar com um toque.
+    padroes: dict[Any, Any] = {}
+    inscricoes = RotaAluno.query.filter_by(aluno_id=aluno.id).all()
+    for inscricao in inscricoes:
+        padroes[inscricao.rota_id] = inscricao.ponto_embarque_padrao_id
+    for viagem in viagens:
+        viagem.ponto_embarque_padrao_id = padroes.get(viagem.horario_rota.rota_id)
+
     return viagens
 
 
@@ -194,7 +202,16 @@ def confirmar_presenca_aluno(
             if not horario:
                 raise NotFoundError("Horário da viagem não encontrado")
 
-            # schema already enforces ponto_embarque_id presence on confirmacao=True
+            if ponto_embarque_id is None:
+                inscricao_rota = db.session.get(RotaAluno, (horario.rota_id, aluno.usuario_id))
+                if inscricao_rota is not None:
+                    ponto_embarque_id = inscricao_rota.ponto_embarque_padrao_id
+            if ponto_embarque_id is None:
+                raise ValidationError(
+                    "Informe o ponto de embarque ou defina o seu ponto padrão na rota",
+                    details={"field": "ponto_embarque_id"},
+                )
+
             ponto_valido = (
                 db.session.query(RotaPonto)
                 .filter_by(rota_id=horario.rota_id, ponto_id=ponto_embarque_id)
@@ -208,8 +225,8 @@ def confirmar_presenca_aluno(
                 if aluno.instituicao and aluno.instituicao.ponto_id:
                     ponto_destino_inferido = aluno.instituicao.ponto_id
             else:
-                if aluno.ponto_casa_id:
-                    ponto_destino_inferido = aluno.ponto_casa_id
+                # Na volta o aluno desce onde embarcou.
+                ponto_destino_inferido = ponto_embarque_id
 
             registro.confirmacao = True
             registro.ponto_embarque_id = ponto_embarque_id

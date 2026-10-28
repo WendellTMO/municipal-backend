@@ -156,7 +156,23 @@ def register_models(api):
         },
     )
 
+    meu_ponto_embarque_request = api.model(
+        "RotaMeuPontoEmbarqueRequest",
+        {"ponto_id": fields.String(required=True, description="UUID de um ponto da rota")},
+    )
+
+    meu_ponto_embarque_response = api.model(
+        "RotaMeuPontoEmbarqueResponse",
+        {
+            "rota_id": fields.String(description="UUID da rota"),
+            "ponto_id": fields.String(description="UUID do ponto padrão, ou null"),
+            "ponto_apelido": fields.String(description="Apelido do ponto padrão, ou null"),
+        },
+    )
+
     return {
+        "rota_meu_ponto_embarque_request": meu_ponto_embarque_request,
+        "rota_meu_ponto_embarque_response": meu_ponto_embarque_response,
         "rota_instituicoes_ordem_request": instituicoes_ordem_request,
         "rota_instituicoes_ordem_response": instituicoes_ordem_response,
         "rota_create_request": rota_create_request,

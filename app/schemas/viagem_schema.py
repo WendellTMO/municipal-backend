@@ -97,13 +97,6 @@ class ViagemConfirmacaoRequestSchema(BaseSchema):
     confirmacao = fields.Boolean(required=True)
     ponto_embarque_id = fields.UUID(load_default=None, allow_none=True)
 
-    @validates_schema
-    def validate_confirmacao(self, data: dict[str, Any], **kwargs) -> None:
-        if data.get("confirmacao") is True and not data.get("ponto_embarque_id"):
-            raise MarshmallowValidationError(
-                {"ponto_embarque_id": ["Para confirmar, selecione um ponto de embarque."]}
-            )
-
 
 class ViagemAcaoRequestSchema(BaseSchema):
     """PUT /viagens/<id>/acao"""
@@ -358,7 +351,10 @@ class ViagemAgendaAlunoResponseSchema(BaseSchema):
 
     def get_ponto_embarque_id(self, obj):
         c = self._find_confirmacao(obj)
-        return str(c.ponto_embarque_id) if (c and c.ponto_embarque_id) else None
+        if c and c.ponto_embarque_id:
+            return str(c.ponto_embarque_id)
+        padrao = getattr(obj, "ponto_embarque_padrao_id", None)
+        return str(padrao) if padrao else None
 
 
 class ViagemListResponseSchema(BaseSchema):

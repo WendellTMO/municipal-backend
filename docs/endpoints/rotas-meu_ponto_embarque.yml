@@ -1,0 +1,41 @@
+tags:
+  - Rotas
+summary: Ponto de embarque padrão do aluno na rota
+description: |
+  GET devolve o ponto de embarque padrão do aluno na rota, ou `ponto_id` e
+  `ponto_apelido` nulos quando ainda não há. PUT escolhe ou troca esse ponto,
+  que precisa pertencer à rota. O app usa o padrão para confirmar presença
+  com um toque (`ponto_embarque_id` da agenda vem preenchido com ele).
+  Requer **JWT token** de aluno inscrito na rota; os demais recebem 403.
+operationId: meuPontoEmbarqueRota
+security:
+  - BearerAuth: []
+parameters:
+  - in: path
+    name: id
+    required: true
+    type: string
+    description: UUID da rota.
+  - in: body
+    name: body
+    description: Somente no PUT.
+    schema:
+      type: object
+      required: [ponto_id]
+      properties:
+        ponto_id:
+          type: string
+          example: "9d0a2e57-8b4c-4c3b-a3f1-0e5d2b7a6c10"
+responses:
+  200:
+    description: Ponto padrão atual.
+    schema:
+      type: object
+      example:
+        rota_id: "3b7e1c44-6a2d-4f08-b1e9-5c8d9a0f7e22"
+        ponto_id: "9d0a2e57-8b4c-4c3b-a3f1-0e5d2b7a6c10"
+        ponto_apelido: "Praça Central"
+  400:
+    description: Ponto não pertence à rota ou id inválido.
+  403:
+    description: Usuário não é aluno inscrito na rota.

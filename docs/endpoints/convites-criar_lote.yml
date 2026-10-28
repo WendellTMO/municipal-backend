@@ -7,8 +7,10 @@ description: |
   resultado de cada linha, na ordem enviada: CRIADO, RENOVADO (convite
   expirado que voltou para a fila), PULADO (e-mail com conta ou convite em
   aberto) ou INVALIDO. Uma linha ruim não impede as outras.
-  `ponto_id` é o ponto da casa do aluno, `rota_id` cria a inscrição na rota
-  ao aceitar. Requer **JWT token** de gestor; vale a prefeitura do gestor.
+  `rota_id` cria a inscrição na rota ao aceitar. `ponto_id` é o ponto de
+  embarque padrão do aluno naquela rota: precisa ser um ponto da rota
+  (RotaPonto) e exige `rota_id`. Sem rota, ou com ponto de outra rota, a
+  linha é INVALIDA com o motivo. Requer **JWT token** de gestor; vale a prefeitura do gestor.
 operationId: criarConvitesLote
 security:
   - BearerAuth: []

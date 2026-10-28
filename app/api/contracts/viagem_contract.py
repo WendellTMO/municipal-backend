@@ -29,7 +29,9 @@ def register_models(api):
         "ViagemConfirmacaoRequest",
         {
             "confirmacao": fields.Boolean(required=True, description="Confirmado"),
-            "ponto_embarque_id": fields.String(description="UUID do ponto de embarque (opcional)"),
+            "ponto_embarque_id": fields.String(
+                description="UUID do ponto de embarque. Se omitido, vale o ponto padrão do aluno na rota"
+            ),
         },
     )
 
@@ -94,7 +96,9 @@ def register_models(api):
             "rota_id": fields.String(description="UUID da rota"),
             "rota_nome": fields.String(description="Nome da rota"),
             "status_confirmacao": fields.Boolean(description="Confirmado"),
-            "ponto_embarque_id": fields.String(description="UUID do ponto de embarque"),
+            "ponto_embarque_id": fields.String(
+                description="UUID do ponto confirmado ou, sem confirmação, o ponto padrão do aluno na rota"
+            ),
         },
     )
 

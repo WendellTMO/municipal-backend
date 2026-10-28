@@ -1,4 +1,4 @@
 nome,email,telefone,ponto,instituicao,rota
 Aluno Exemplo Um,aluno.um@exemplo.test,83999990001,Ponto da Praça,Escola Exemplo,Rota Exemplo
-Aluno Exemplo Dois,aluno.dois@exemplo.test,,,Escola Exemplo,
+Aluno Exemplo Dois,aluno.dois@exemplo.test,,,Escola Exemplo,Rota Exemplo
 Aluno Exemplo Tres,aluno.tres@exemplo.test,83999990003,,,
