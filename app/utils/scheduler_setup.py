@@ -6,6 +6,7 @@ from flask import Flask
 from flask_apscheduler import APScheduler
 
 from app.tasks.agendamento_tasks import job_gerar_viagens_semanais
+from app.tasks.convite_tasks import job_convites
 from app.tasks.notificacao_tasks import verificar_viagens_10min, verificar_viagens_24h
 
 
@@ -48,6 +49,16 @@ def init_scheduler(app: Flask, scheduler: APScheduler):
             func=verificar_viagens_10min,
             trigger="interval",
             minutes=10,
+            replace_existing=True,
+        )
+
+        # Sem `args=[app]` pelo mesmo motivo: o job usa `scheduler.app`.
+        scheduler.add_job(
+            id="job_convites",
+            func=job_convites,
+            trigger="interval",
+            minutes=1,
+            max_instances=1,
             replace_existing=True,
         )
 

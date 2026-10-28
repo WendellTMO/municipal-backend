@@ -2,7 +2,9 @@
 
 import hashlib
 import hmac
+import html
 import logging
+import os
 import secrets
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -32,12 +34,15 @@ from app.models.user import Aluno, User
 from app.schemas.validators import validate_phone
 from app.services import aluno_service
 from app.utils import audit_logger, validate_cpf, validate_email, validate_password, validate_uuid
+from app.utils.email_sender import mail_configurado, send_email
 
 logger = logging.getLogger(__name__)
 
 LIMITE_LOTE = 500
 VALIDADE_DIAS = 7
 PIN_MAX_TENTATIVAS = 5
+MAX_TENTATIVAS_ENVIO = 3
+LIMITE_ENVIO_POR_EXECUCAO = 50
 
 TERMOS_DE_USO_VERSAO = "demo-1"
 TERMOS_DE_USO_TEXTO = (
@@ -462,3 +467,92 @@ def aceitar_convite(token: str, dados: dict[str, Any]) -> Aluno:
         resource_id=str(convite.id),
     )
     return aluno
+
+
+# ─── Envio do e-mail (chamado pelo job_convites) ───────────────────────────────
+
+
+def _montar_email(convite: Convite, link: str, pin: str) -> tuple[str, str, str]:
+    """Assunto, texto simples e HTML do convite."""
+    assunto = "Seu convite para o BusKá"
+    texto = (
+        f"Olá, {convite.nome}!\n\n"
+        "Você foi convidado(a) para usar o BusKá, o app do transporte escolar.\n"
+        "Para concluir o seu cadastro, abra o link abaixo e informe o código de acesso.\n\n"
+        f"Link: {link}\n"
+        f"Código de acesso (PIN): {pin}\n\n"
+        f"O convite vale por {VALIDADE_DIAS} dias. "
+        "Se você não esperava este e-mail, ignore esta mensagem."
+    )
+    pagina = (
+        f"<p>Olá, {html.escape(convite.nome)}!</p>"
+        "<p>Você foi convidado(a) para usar o BusKá, o app do transporte escolar.</p>"
+        "<p>Para concluir o seu cadastro, abra o link abaixo e informe o código de acesso.</p>"
+        f'<p><a href="{link}">Concluir meu cadastro</a></p>'
+        f"<p>Código de acesso (PIN): <strong>{pin}</strong></p>"
+        f"<p>O convite vale por {VALIDADE_DIAS} dias. "
+        "Se você não esperava este e-mail, ignore esta mensagem.</p>"
+    )
+    return assunto, texto, pagina
+
+
+def _desfazer_credenciais(convite: Convite) -> None:
+    convite.token_hash = None
+    convite.pin_hash = None
+    convite.expira_em = None
+
+
+def processar_envios() -> int:
+    """Envia os convites PENDENTES: link e PIN novos a cada envio, só os hashes ficam salvos.
+
+    Devolve quantos convites saíram da fila. Sem configuração de e-mail em produção,
+    a fila fica intacta e nada de link ou PIN vai para o log.
+    """
+    frontend_url = (current_app.config.get("FRONTEND_URL") or "").strip()
+    if frontend_url == "":
+        logger.error("FRONTEND_URL vazio: convites continuam na fila.")
+        return 0
+
+    em_desenvolvimento = os.getenv("FLASK_ENV", "development") == "development"
+    if not mail_configurado() and not em_desenvolvimento:
+        logger.warning("E-mail não configurado: convites continuam na fila.")
+        return 0
+
+    pendentes = (
+        Convite.query.filter(
+            Convite.status == PENDENTE, Convite.envio_tentativas < MAX_TENTATIVAS_ENVIO
+        )
+        .order_by(Convite.created_at.asc())
+        .limit(LIMITE_ENVIO_POR_EXECUCAO)
+        .all()
+    )
+
+    enviados = 0
+    for convite in pendentes:
+        token, pin = gerar_token_e_pin(convite)
+        link = f"{frontend_url.rstrip('/')}/convite/{token}"
+
+        if mail_configurado():
+            assunto, texto, pagina = _montar_email(convite, link, pin)
+            try:
+                send_email(to=convite.email, subject=assunto, body_plain=texto, body_html=pagina)
+            except Exception:
+                convite.envio_tentativas += 1
+                _desfazer_credenciais(convite)
+                db.session.commit()
+                logger.exception("Falha ao enviar o convite %s", convite.id)
+                continue
+        else:
+            logger.warning(
+                "Desenvolvimento sem e-mail: convite de %s, link %s PIN %s",
+                convite.email,
+                link,
+                pin,
+            )
+
+        convite.status = ENVIADO
+        convite.enviado_em = _agora()
+        db.session.commit()
+        enviados += 1
+
+    return enviados
