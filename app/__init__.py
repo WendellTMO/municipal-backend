@@ -19,6 +19,7 @@ from app.utils.scheduler_setup import init_scheduler
 
 from .api.controllers.aluno_controller import api as alunos_ns
 from .api.controllers.auth_controller import api as auth_ns
+from .api.controllers.cep_controller import api as cep_ns
 from .api.controllers.convite_controller import api as convites_ns
 from .api.controllers.dashboard_controller import api as dashboard_ns
 from .api.controllers.feedback_controller import api as feedback_ns
@@ -113,6 +114,7 @@ NAMESPACES = (
     (dashboard_ns, "/v1/dashboard"),
     (feedback_ns, "/v1/feedback"),
     (convites_ns, "/v1/convites"),
+    (cep_ns, "/v1/cep"),
 )
 
 

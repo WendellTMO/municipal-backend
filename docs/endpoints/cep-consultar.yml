@@ -1,0 +1,36 @@
+tags:
+  - CEP
+summary: Consulta um CEP na ViaCEP (público)
+description: |
+  Sem autenticação, pois o aluno usa na tela de aceite do convite, antes de ter
+  conta. Aceita 8 dígitos com ou sem hífen. A resposta traz o `cep` só com dígitos
+  e campos ausentes na ViaCEP viram string vazia. Timeout de 5 s na ViaCEP.
+  Limite de 30 consultas por minuto por IP (por processo). O aceite do convite
+  não depende desta consulta: se a ViaCEP cair, o cadastro continua funcionando.
+operationId: consultarCep
+parameters:
+  - in: path
+    name: cep
+    required: true
+    type: string
+    description: CEP com 8 dígitos, com ou sem hífen.
+    example: "58429-900"
+responses:
+  200:
+    description: CEP encontrado.
+    schema:
+      type: object
+      example:
+        cep: "58429900"
+        logradouro: "Rua Aprígio Veloso 882"
+        bairro: "Universitário"
+        cidade: "Campina Grande"
+        estado: "PB"
+  400:
+    description: Formato inválido (não tem 8 dígitos).
+  404:
+    description: A ViaCEP não conhece o CEP.
+  429:
+    description: Mais de 30 consultas no último minuto para o mesmo IP.
+  503:
+    description: ViaCEP fora do ar, com erro ou sem responder em 5 s.
