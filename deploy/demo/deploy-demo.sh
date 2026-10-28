@@ -22,6 +22,12 @@ export COMPOSE_PROJECT_NAME=buska-backend
 export API_IMAGE="buska-backend:demo-$(git rev-parse --short HEAD)"
 docker build -t "$API_IMAGE" .
 
+# docker-compose 1.29 falha ao recriar contêiner de imagem nova (KeyError ContainerConfig).
+# Remover antes é seguro: os dados ficam no volume nomeado.
+for c in $(docker ps -a --format "{{.Names}}" | grep -E "buska_(db_prod|api|scheduler)"); do
+  docker rm -f "$c"
+done
+
 docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d db
 for i in $(seq 1 60); do
   if docker exec buska_db_prod pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; then
