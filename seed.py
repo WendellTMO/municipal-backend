@@ -527,7 +527,7 @@ def seed_demo_data() -> None:
             "2024009",
             ufcg.id,
         ),
-        ("João Victor Leal", "aluno10@buska.app", "10101010110", "83988010010", "2024010", ufcg.id),
+        ("João Victor Leal", "aluno10@buska.app", "10101010110", "83988010010", "2024010", uepb.id),
         (
             "Karen Alves Freitas",
             "aluno11@buska.app",
