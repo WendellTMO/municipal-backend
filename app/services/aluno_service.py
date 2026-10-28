@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # ─── Guardian email ────────────────────────────────────────────────────────────
 
 
-def _send_guardian_consent_email(aluno: Aluno) -> None:
+def enviar_email_consentimento_responsavel(aluno: Aluno) -> None:
     """Send a consent request email to the aluno's guardian."""
     frontend_url = current_app.config.get("FRONTEND_URL", "http://localhost:8081")
     link = f"{frontend_url.rstrip('/')}/guardian-consent?token={aluno.guardian_token}"
@@ -78,6 +78,17 @@ def _send_guardian_consent_email(aluno: Aluno) -> None:
         )
     except Exception:
         logger.exception("Failed to send guardian consent email for aluno %s", aluno.id)
+
+
+def preparar_consentimento_responsavel(aluno: Aluno, email_responsavel: str | None) -> None:
+    """Exige o e-mail do responsável e gera o token de consentimento do menor."""
+    if not email_responsavel:
+        raise ValidationError(
+            "E-mail do responsável é obrigatório para menores de 18 anos",
+            details={"field": "email_responsavel"},
+        )
+    aluno.email_responsavel = email_responsavel.strip().lower()
+    aluno.guardian_token = secrets.token_urlsafe(32)
 
 
 # ─── Guardian consent ──────────────────────────────────────────────────────────
@@ -209,18 +220,11 @@ def auto_cadastro(data: dict[str, Any]) -> Aluno:
         db.session.flush()  # get novo_aluno.id before checking is_minor
 
         if novo_aluno.is_minor:
-            email_resp = data.get("email_responsavel")
-            if not email_resp:
-                raise ValidationError(
-                    "E-mail do responsável é obrigatório para menores de 18 anos",
-                    details={"field": "email_responsavel"},
-                )
-            novo_aluno.email_responsavel = email_resp.strip().lower()
-            novo_aluno.guardian_token = secrets.token_urlsafe(32)
             # Status stays PENDING_SIGNUP until guardian consents
+            preparar_consentimento_responsavel(novo_aluno, data.get("email_responsavel"))
 
     if novo_aluno.is_minor:
-        _send_guardian_consent_email(novo_aluno)
+        enviar_email_consentimento_responsavel(novo_aluno)
 
     return novo_aluno
 

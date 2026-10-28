@@ -1,0 +1,25 @@
+tags:
+  - Convites
+summary: Cancela um convite
+description: |
+  Marca o convite como CANCELADO; o link deixa de funcionar. Convite ACEITO
+  ou já CANCELADO responde 409. Requer **JWT token** de gestor.
+operationId: cancelarConvite
+security:
+  - BearerAuth: []
+parameters:
+  - in: path
+    name: id
+    required: true
+    type: string
+responses:
+  200:
+    description: Cancelado.
+    schema:
+      type: object
+      example:
+        message: "Convite cancelado com sucesso"
+  404:
+    description: Convite não encontrado.
+  409:
+    description: Convite já aceito ou cancelado.

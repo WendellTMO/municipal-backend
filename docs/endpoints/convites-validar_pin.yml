@@ -1,0 +1,51 @@
+tags:
+  - Convites
+summary: Valida o PIN do convite (público)
+description: |
+  Sem autenticação. Só depois do PIN correto devolve os dados do convite e o
+  texto dos termos de uso. Token inexistente, expirado, cancelado ou aceito
+  respondem o mesmo 404. PIN errado responde 400 com `tentativas_restantes`;
+  a quinta falha responde 429 e o convite fica bloqueado até ser reenviado.
+operationId: validarPinConvite
+parameters:
+  - in: path
+    name: token
+    required: true
+    type: string
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      properties:
+        pin: {type: string, example: "482913"}
+responses:
+  200:
+    description: PIN correto.
+    schema:
+      type: object
+      example:
+        nome: "Ana Souza"
+        email: "ana@exemplo.test"
+        telefone: null
+        ponto_id: "9d0a2e57-8b4c-4c3b-a3f1-0e5d2b7a6c10"
+        ponto_apelido: "Casa da Ana"
+        instituicao_id: null
+        instituicao_nome: null
+        rota_id: "3b7e1c44-6a2d-4f08-b1e9-5c8d9a0f7e22"
+        rota_nome: "Rota Centro"
+        termos_versao: "demo-1"
+        termos_texto: "Ao continuar, você concorda em usar o BusKá apenas para o transporte escolar e autoriza o uso dos seus dados (nome, e-mail, CPF, ponto de embarque) pelos gestores do transporte. Esta é a versão de demonstração."
+  400:
+    description: PIN incorreto.
+    schema:
+      type: object
+      example:
+        error:
+          code: "VALIDATION_ERROR"
+          message: "PIN incorreto. Restam 4 tentativa(s)."
+          details: {tentativas_restantes: 4}
+  404:
+    description: Convite inválido ou expirado.
+  429:
+    description: Cinco falhas de PIN.

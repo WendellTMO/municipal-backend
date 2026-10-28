@@ -1,0 +1,29 @@
+tags:
+  - Convites
+summary: Reenvia um convite
+description: |
+  Volta o convite para a fila (PENDENTE). O job gera link e PIN novos e os
+  anteriores deixam de valer. Convite ACEITO ou CANCELADO responde 409.
+  Convite de outra prefeitura responde 404. Requer **JWT token** de gestor.
+operationId: reenviarConvite
+security:
+  - BearerAuth: []
+parameters:
+  - in: path
+    name: id
+    required: true
+    type: string
+responses:
+  200:
+    description: Convite de volta na fila.
+    schema:
+      type: object
+      example:
+        id: "6c1f0f0e-5d0e-4f7e-9d54-6a1a3f0d2b11"
+        email: "ana@exemplo.test"
+        status: "PENDENTE"
+        expira_em: null
+  404:
+    description: Convite não encontrado.
+  409:
+    description: Convite já aceito ou cancelado.

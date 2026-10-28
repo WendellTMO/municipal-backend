@@ -52,3 +52,10 @@ class ConflictError(AppError):
 
     def __init__(self, message: str = "Recurso já existe", field: str | None = None):
         super().__init__(message, 409, "CONFLICT", field=field)
+
+
+class RateLimitError(AppError):
+    """Too many attempts (429)."""
+
+    def __init__(self, message: str = "Muitas tentativas"):
+        super().__init__(message, 429, "TOO_MANY_REQUESTS")
