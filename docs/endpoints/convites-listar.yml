@@ -1,0 +1,40 @@
+tags:
+  - Convites
+summary: Lista os convites da prefeitura
+description: |
+  Filtro opcional `status` (PENDENTE, ENVIADO, ACEITO, CANCELADO, EXPIRADO).
+  Convites ENVIADOS vencidos são marcados EXPIRADO na hora. Nunca devolve
+  hash de token nem de PIN. Requer **JWT token** de gestor.
+operationId: listarConvites
+security:
+  - BearerAuth: []
+parameters:
+  - in: query
+    name: status
+    type: string
+responses:
+  200:
+    description: Lista de convites.
+    schema:
+      type: object
+      example:
+        total: 1
+        items:
+          - id: "6c1f0f0e-5d0e-4f7e-9d54-6a1a3f0d2b11"
+            nome: "Ana Souza"
+            email: "ana@exemplo.test"
+            telefone: "83999998888"
+            ponto_id: null
+            instituicao_id: null
+            rota_id: null
+            status: "ENVIADO"
+            expira_em: "2026-11-04T13:00:00+00:00"
+            enviado_em: "2026-10-28T13:00:00+00:00"
+            aceito_em: null
+            criado_por_id: "0a4b9d8e-2c1f-4a77-8e35-9d6b1c2f3e44"
+            aluno_id: null
+            created_at: "2026-10-28T12:59:00+00:00"
+  400:
+    description: Status inválido.
+  403:
+    description: Usuário não é gestor.

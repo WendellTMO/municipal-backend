@@ -1,0 +1,48 @@
+tags:
+  - Convites
+summary: Aceita o convite e cria a conta do aluno (público)
+description: |
+  Sem autenticação. Confere o PIN de novo (mesmo limite de 5 falhas). Maior
+  de idade entra ACTIVE. Menor de 18 anos entra PENDING_SIGNUP e exige
+  `nome_responsavel` e `email_responsavel`; o responsável recebe o e-mail de
+  consentimento do fluxo existente. O ponto do convite vira `ponto_casa_id` e
+  a rota do convite vira inscrição. CPF ou e-mail já cadastrados respondem 409.
+operationId: aceitarConvite
+parameters:
+  - in: path
+    name: token
+    required: true
+    type: string
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      properties:
+        pin: {type: string, example: "482913"}
+        senha: {type: string, example: "SenhaForte123"}
+        cpf: {type: string, example: "529.982.247-25"}
+        data_nascimento: {type: string, example: "1990-05-20"}
+        aceite_termos: {type: boolean, example: true}
+        telefone: {type: string}
+        nome_responsavel: {type: string}
+        cpf_responsavel: {type: string}
+        email_responsavel: {type: string}
+responses:
+  201:
+    description: Conta criada.
+    schema:
+      type: object
+      example:
+        id: "c2f6f7a0-1d4e-4a8b-9a55-2e0f3b1c7d90"
+        email: "ana@exemplo.test"
+        status: "ACTIVE"
+        requer_consentimento_responsavel: false
+  400:
+    description: PIN incorreto, termos não aceitos ou dados inválidos.
+  404:
+    description: Convite inválido ou expirado.
+  409:
+    description: CPF ou e-mail já cadastrado (campo `field` no erro).
+  429:
+    description: Cinco falhas de PIN.

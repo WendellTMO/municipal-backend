@@ -1,0 +1,47 @@
+tags:
+  - Convites
+summary: Pré-cadastra alunos em lote (até 500)
+description: |
+  Grava convites PENDENTES. Link e PIN não são gerados aqui: o job de envio
+  gera os dois, guarda só os hashes e manda o e-mail. A resposta traz o
+  resultado de cada linha, na ordem enviada: CRIADO, RENOVADO (convite
+  expirado que voltou para a fila), PULADO (e-mail com conta ou convite em
+  aberto) ou INVALIDO. Uma linha ruim não impede as outras.
+  `ponto_id` é o ponto da casa do aluno, `rota_id` cria a inscrição na rota
+  ao aceitar. Requer **JWT token** de gestor; vale a prefeitura do gestor.
+operationId: criarConvitesLote
+security:
+  - BearerAuth: []
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      properties:
+        convites:
+          type: array
+          items:
+            type: object
+            properties:
+              nome: {type: string, example: "Ana Souza"}
+              email: {type: string, example: "ana@exemplo.test"}
+              telefone: {type: string, example: "83999998888"}
+              ponto_id: {type: string}
+              instituicao_id: {type: string}
+              rota_id: {type: string}
+responses:
+  201:
+    description: Resultado por linha.
+    schema:
+      type: object
+      example:
+        total: 3
+        items:
+          - {linha: 1, email: "ana@exemplo.test", resultado: "CRIADO", motivo: "", id: "6c1f0f0e-5d0e-4f7e-9d54-6a1a3f0d2b11"}
+          - {linha: 2, email: "invalido", resultado: "INVALIDO", motivo: "Formato de email inválido", id: null}
+          - {linha: 3, email: "bia@exemplo.test", resultado: "PULADO", motivo: "E-mail já possui conta", id: null}
+  400:
+    description: Lote vazio ou com mais de 500 linhas.
+  403:
+    description: Usuário não é gestor.
