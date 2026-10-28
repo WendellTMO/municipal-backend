@@ -100,6 +100,20 @@ make docker-logs    # Ver logs em tempo real
 make docker-clean   # Limpar tudo (volumes + imagens)
 ```
 
+## Convidar alunos por CSV
+
+`scripts/convidar_csv.py` lê um CSV e cria os convites pela API (`POST /v1/convites/`, lotes de até 500). O e-mail com link e PIN sai pelo job de envio.
+
+```bash
+export BUSKA_API_URL=http://localhost:5000
+export BUSKA_EMAIL=gestor@exemplo.test
+export BUSKA_SENHA=...        # fica só no ambiente, nunca em arquivo
+uv run python scripts/convidar_csv.py scripts/exemplo_convites.csv --dry-run   # só valida
+uv run python scripts/convidar_csv.py scripts/exemplo_convites.csv             # cria os convites
+```
+
+Colunas: `nome` e `email` (obrigatórias), `telefone`, `ponto` (apelido ou id), `instituicao` (nome) e `rota` (nome). O resultado sai por linha: CRIADO, RENOVADO, PULADO ou INVALIDO. Veja `scripts/exemplo_convites.csv`.
+
 ## 📁 Estrutura do Projeto
 
 ```

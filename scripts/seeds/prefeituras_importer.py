@@ -6,7 +6,6 @@ from sqlalchemy.dialects.postgresql import insert
 from app.models.base import db
 from app.models.prefeitura import Prefeitura
 
-
 BATCH_SIZE = 1000
 
 
@@ -69,9 +68,7 @@ def import_prefeituras_csv(path: str | Path) -> int:
             codigo_ibge = _clean(row.get("CÓDIGO DO MUNICÍPIO - IBGE")) or _clean(
                 row.get("C�DIGO DO MUNIC�PIO - IBGE")
             )
-            nome = _clean(row.get("MUNICÍPIO - IBGE")) or _clean(
-                row.get("MUNIC�PIO - IBGE")
-            )
+            nome = _clean(row.get("MUNICÍPIO - IBGE")) or _clean(row.get("MUNIC�PIO - IBGE"))
             estado = _clean(row.get("UF"))
 
             if not codigo_ibge or not nome or not estado:
