@@ -473,9 +473,11 @@ def aceitar_convite(token: str, dados: dict[str, Any]) -> Aluno:
 # ─── Envio do e-mail (chamado pelo job_convites) ───────────────────────────────
 
 
-def _montar_email(convite: Convite, link: str, pin: str) -> tuple[str, str, str]:
+def _montar_email(convite: Convite, link: str, pin: str, frontend_url: str) -> tuple[str, str, str]:
     """Assunto, texto simples e HTML do convite."""
     assunto = "Seu convite para o BusKá"
+    url_web = frontend_url.rstrip("/")
+    url_apk = f"{url_web}/buska.apk"
     texto = (
         f"Olá, {convite.nome}!\n\n"
         "Você foi convidado(a) para usar o BusKá, o app do transporte escolar.\n"
@@ -483,7 +485,11 @@ def _montar_email(convite: Convite, link: str, pin: str) -> tuple[str, str, str]
         f"Link: {link}\n"
         f"Código de acesso (PIN): {pin}\n\n"
         f"O convite vale por {VALIDADE_DIAS} dias. "
-        "Se você não esperava este e-mail, ignore esta mensagem."
+        "Se você não esperava este e-mail, ignore esta mensagem.\n\n"
+        "Baixe o app\n"
+        f"Android: {url_apk}\n"
+        "Ao instalar, o Android pode pedir para permitir a instalação de fontes desconhecidas.\n"
+        f"No iPhone, use o BusKá pelo navegador: {url_web}"
     )
     pagina = montar_email_html(
         titulo="Seu convite para o BusKá",
@@ -500,6 +506,7 @@ def _montar_email(convite: Convite, link: str, pin: str) -> tuple[str, str, str]
             f"O convite vale por {VALIDADE_DIAS} dias. "
             "Se você não esperava este e-mail, ignore esta mensagem."
         ),
+        links_app=(url_apk, url_web),
     )
     return assunto, texto, pagina
 
@@ -541,7 +548,7 @@ def processar_envios() -> int:
         link = f"{frontend_url.rstrip('/')}/convite/{token}"
 
         if mail_configurado():
-            assunto, texto, pagina = _montar_email(convite, link, pin)
+            assunto, texto, pagina = _montar_email(convite, link, pin, frontend_url)
             try:
                 send_email(
                     to=convite.email,

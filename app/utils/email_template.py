@@ -41,6 +41,22 @@ def _botao(texto: str, url: str) -> str:
     )
 
 
+def _bloco_app(url_apk: str, url_web: str) -> str:
+    cinza = "margin:0 0 8px 0;font-size:13px;line-height:19px;color:#5B6B85;text-align:center;"
+    return (
+        '<div style="border-top:1px solid #E3E8F0;margin:8px 0 16px 0;padding-top:20px;">'
+        '<p style="margin:0 0 12px 0;font-size:18px;line-height:24px;font-weight:700;'
+        'color:#0F1B33;text-align:center;">Baixe o app</p>'
+        f'<p style="{cinza}">Android</p>'
+        f"{_botao('Baixar o app para Android', url_apk)}"
+        f'<p style="{cinza}">Ao instalar, o Android pode pedir para permitir a instalação '
+        "de fontes desconhecidas.</p>"
+        f'<p style="{cinza}margin-top:16px;">No iPhone, use o BusKá pelo navegador: '
+        f'<a href="{escape(url_web)}" style="color:{COR_AZUL};">{escape(url_web)}</a></p>'
+        "</div>"
+    )
+
+
 def montar_email_html(
     titulo: str,
     preheader: str,
@@ -50,6 +66,7 @@ def montar_email_html(
     botao_url: str,
     pin: str | None = None,
     validade: str | None = None,
+    links_app: tuple[str, str] | None = None,
 ) -> str:
     """Devolve o HTML completo do e-mail. Todo texto recebido é escapado aqui dentro.
 
@@ -72,6 +89,10 @@ def montar_email_html(
             '<p style="margin:0 0 16px 0;font-size:14px;line-height:21px;color:#5B6B85;'
             f'text-align:center;">{escape(validade)}</p>'
         )
+
+    bloco_app = ""
+    if links_app:
+        bloco_app = _bloco_app(links_app[0], links_app[1])
 
     url = escape(botao_url)
     return (
@@ -100,7 +121,7 @@ def montar_email_html(
         f"{escape(titulo)}</h1>"
         '<p style="margin:0 0 16px 0;font-size:16px;line-height:24px;color:#2B3647;">'
         f"{escape(saudacao)}</p>"
-        f"{texto_paragrafos}{_botao(botao_texto, botao_url)}{bloco_pin}{bloco_validade}"
+        f"{texto_paragrafos}{_botao(botao_texto, botao_url)}{bloco_pin}{bloco_validade}{bloco_app}"
         '<p style="margin:0 0 8px 0;font-size:12px;line-height:18px;color:#8593A8;'
         'text-align:center;">Se o botão não funcionar, copie este link e cole no navegador:<br>'
         f'<a href="{url}" style="color:#8593A8;word-break:break-all;">{url}</a></p>'
