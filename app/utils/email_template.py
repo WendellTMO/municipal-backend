@@ -5,6 +5,12 @@ from html import escape
 COR_AZUL = "#0347D0"
 FONTE = "Inter, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
 LOGO_CID = "logo-buska"
+# Cores medidas nos pixels da logo antiga (buska-login-hero.png): "Bus" em degradê de
+# amarelo (#FCC202) a laranja (#EE8502), média #F4A402; "Ká" em azul marinho #033871.
+# Sobre o cabeçalho azul o marinho some, então lá "Ká" fica branco e "Bus" usa o amarelo claro.
+AMARELO_CLARO = "#FCC202"
+AMARELO = "#F4A402"
+MARINHO = "#033871"
 
 
 def _bloco_pin(pin: str) -> str:
@@ -85,8 +91,8 @@ def montar_email_html(
         '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>'
         f'<td style="padding-right:12px;"><img src="cid:{LOGO_CID}" width="48" height="48" '
         'alt="BusKá" style="display:block;border:2px solid #FFFFFF;border-radius:12px;"></td>'
-        '<td style="font-size:28px;font-weight:700;color:#FFFFFF;'
-        f'font-family:{FONTE};">BusKá</td>'
+        f'<td style="font-size:28px;font-weight:700;color:#FFFFFF;font-family:{FONTE};">'
+        f'<span style="color:{AMARELO_CLARO};">Bus</span>Ká</td>'
         "</tr></table></td></tr>"
         # conteúdo
         '<tr><td style="padding:32px 32px 16px 32px;">'
@@ -102,8 +108,10 @@ def montar_email_html(
         # rodapé
         '<tr><td align="center" style="padding:20px 32px 28px 32px;'
         'border-top:1px solid #E3E8F0;">'
-        '<p style="margin:0 0 4px 0;font-size:12px;line-height:18px;color:#8593A8;">'
-        "BusKá, transporte escolar municipal</p>"
+        '<p style="margin:0 0 2px 0;font-size:16px;line-height:22px;font-weight:700;'
+        f'color:{MARINHO};"><span style="color:{AMARELO};">Bus</span>Ká</p>'
+        '<p style="margin:0 0 8px 0;font-size:12px;line-height:18px;color:#8593A8;">'
+        "gestão inteligente do transporte escolar municipal</p>"
         '<p style="margin:0;font-size:12px;line-height:18px;color:#8593A8;">'
         "Esta é uma mensagem automática. Por favor, não responda a este e-mail.</p>"
         "</td></tr></table></td></tr></table></body></html>"

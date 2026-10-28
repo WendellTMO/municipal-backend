@@ -357,3 +357,27 @@ def test_reset_com_usuario_ja_removido_400_e_apaga_o_registro(_db, aluno):
 
     assert str(exc.value) == "Link inválido ou expirado"
     assert PasswordResetToken.query.count() == 0
+
+
+# ─── link de recuperação usa a URL pública ──────────────────────────────────
+
+
+def test_forgot_password_monta_link_com_frontend_url_e_nao_com_url_root(
+    _db, app, client, aluno, emails_enviados
+):
+    app.config["FRONTEND_URL"] = "https://buska.exemplo.test"
+    resposta = client.post("/v1/auth/forgot-password", json={"email": aluno.user.email})
+
+    assert resposta.status_code == 200
+    registro = PasswordResetToken.query.one()
+    esperado = f"https://buska.exemplo.test/v1/auth/reset-password?token={registro.token}"
+    assert esperado in emails_enviados[0]["body_plain"]
+    assert f'href="{esperado}"' in emails_enviados[0]["body_html"]
+
+
+def test_formulario_de_reset_escapa_o_token(client):
+    resposta = client.get('/v1/auth/reset-password?token="><script>x</script>')
+
+    corpo = resposta.get_data(as_text=True)
+    assert "<script>x</script>" not in corpo
+    assert 'action="/v1/auth/reset-password"' in corpo
