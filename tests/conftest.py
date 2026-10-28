@@ -11,7 +11,8 @@ from sqlalchemy import event
 
 from app import create_app
 from app.models.base import db
-from app.models.enum import DiaDaSemana, StatusViagem, UserStatus
+from app.models.enum import DiaDaSemana, SentidoViagem, StatusViagem, TipoInstituicao, UserStatus
+from app.models.geo import Instituicao, Ponto
 from tests.factories.geo_factory import PontoFactory
 from tests.factories.onibus_factory import OnibusFactory
 from tests.factories.prefeitura_factory import PrefeituraFactory
@@ -247,6 +248,33 @@ def aluno(client, app, _db, prefeitura):
 
 
 @pytest.fixture()
+def ponto_instituicao(_db, prefeitura):
+    p = Ponto(prefeitura_id=prefeitura.id, latitude=-7.3, longitude=-35.7, apelido="Escola")
+    _db.session.add(p)
+    _db.session.commit()
+    return p
+
+
+@pytest.fixture()
+def aluno_com_instituicao(_db, prefeitura, aluno, ponto_instituicao):
+    """O mesmo `aluno`, agora estudando numa instituição que tem ponto de parada."""
+    inst = Instituicao(
+        fonte="MANUAL",
+        codigo_externo="INST-CONFTEST",
+        nome="Escola Conftest",
+        tipo=TipoInstituicao.ESCOLA_PUBLICA,
+        uf="PB",
+        prefeitura_id=prefeitura.id,
+        ponto_id=ponto_instituicao.id,
+    )
+    _db.session.add(inst)
+    _db.session.flush()
+    aluno.user.instituicao_id = inst.id
+    _db.session.commit()
+    return aluno
+
+
+@pytest.fixture()
 def aluno_pending(client, app, _db, prefeitura):
     u = AlunoFactory(prefeitura_id=prefeitura.id)
     u.status = UserStatus.PENDING_SIGNUP
@@ -330,7 +358,7 @@ def rota(_db, prefeitura, motorista, onibus):
 
 @pytest.fixture()
 def horario_rota(_db, rota):
-    h = HorarioRotaFactory(rota_id=rota.id)
+    h = HorarioRotaFactory(rota_id=rota.id, sentido=SentidoViagem.IDA)
     _db.session.add(h)
     _db.session.commit()
     return h

@@ -102,12 +102,16 @@ class RotaAluno(db.Model):
     )
 
     data_inscricao = db.Column(db.DateTime, server_default=db.func.now())
-    # Ponto da rota em que o aluno costuma embarcar; a ida desembarca na instituição
-    # e a volta desembarca neste mesmo ponto.
+    # Escolhas que o aluno pediu para lembrar. Embarque padrão vale na ida, desembarque
+    # padrão na volta; o outro lado é sempre a instituição.
     ponto_embarque_padrao_id = db.Column(
         UUID(as_uuid=True), db.ForeignKey("ponto.id", ondelete="SET NULL"), nullable=True
     )
+    ponto_desembarque_padrao_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("ponto.id", ondelete="SET NULL"), nullable=True
+    )
     ponto_embarque_padrao = db.relationship("Ponto", foreign_keys=[ponto_embarque_padrao_id])
+    ponto_desembarque_padrao = db.relationship("Ponto", foreign_keys=[ponto_desembarque_padrao_id])
 
 
 class RotaInstituicaoOrdem(db.Model):

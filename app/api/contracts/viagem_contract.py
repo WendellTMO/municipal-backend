@@ -30,7 +30,13 @@ def register_models(api):
         {
             "confirmacao": fields.Boolean(required=True, description="Confirmado"),
             "ponto_embarque_id": fields.String(
-                description="UUID do ponto de embarque. Se omitido, vale o ponto padrão do aluno na rota"
+                description="Ponto da rota onde embarca (ida). Se omitido, vale o padrão lembrado"
+            ),
+            "ponto_desembarque_id": fields.String(
+                description="Ponto da rota onde desce (volta). Se omitido, vale o padrão lembrado"
+            ),
+            "lembrar_escolha": fields.Boolean(
+                description="Guarda o ponto escolhido como padrão da rota (padrão: false)"
             ),
         },
     )
@@ -97,7 +103,13 @@ def register_models(api):
             "rota_nome": fields.String(description="Nome da rota"),
             "status_confirmacao": fields.Boolean(description="Confirmado"),
             "ponto_embarque_id": fields.String(
-                description="UUID do ponto confirmado ou, sem confirmação, o ponto padrão do aluno na rota"
+                description="UUID do ponto confirmado ou, sem confirmação, o sugerido pelos padrões"
+            ),
+            "ponto_destino_id": fields.String(
+                description="UUID do ponto de destino confirmado ou sugerido, ou null"
+            ),
+            "precisa_escolher_ponto": fields.Boolean(
+                description="true quando não confirmou e não há padrão para o sentido da viagem"
             ),
         },
     )

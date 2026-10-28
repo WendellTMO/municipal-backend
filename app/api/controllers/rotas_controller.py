@@ -154,6 +154,12 @@ class RotaMeuPontoEmbarqueResource(Resource):
         payload = meu_ponto_request_schema.load(data)
         return rotas_service.set_meu_ponto_embarque(get_jwt_identity(), id, payload), 200
 
+    @api.doc("delete_meu_ponto_embarque")
+    @api.response(200, "Success", models["rota_meu_ponto_embarque_response"])
+    @jwt_required()
+    def delete(self, id: str) -> tuple[dict[str, Any], int]:
+        return rotas_service.esquecer_meu_ponto_embarque(get_jwt_identity(), id), 200
+
 
 @api.route("/<string:id>/instituicoes/ordem")
 class RotaInstituicoesOrdemResource(Resource):

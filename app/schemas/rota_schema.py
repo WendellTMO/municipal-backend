@@ -68,7 +68,8 @@ class RotaInscricaoRequestSchema(BaseSchema):
 class MeuPontoEmbarqueRequestSchema(BaseSchema):
     """PUT /rotas/<id>/meu-ponto-embarque"""
 
-    ponto_id = fields.UUID(required=True)
+    ponto_embarque_id = fields.UUID(load_default=None, allow_none=True)
+    ponto_desembarque_id = fields.UUID(load_default=None, allow_none=True)
 
 
 # ==========================================

@@ -1,11 +1,12 @@
 tags:
   - Rotas
-summary: Ponto de embarque padrão do aluno na rota
+summary: Pontos lembrados do aluno na rota
 description: |
-  GET devolve o ponto de embarque padrão do aluno na rota, ou `ponto_id` e
-  `ponto_apelido` nulos quando ainda não há. PUT escolhe ou troca esse ponto,
-  que precisa pertencer à rota. O app usa o padrão para confirmar presença
-  com um toque (`ponto_embarque_id` da agenda vem preenchido com ele).
+  GET devolve os pontos que o aluno pediu para lembrar nesta rota
+  (`ponto_embarque` usado na ida, `ponto_desembarque` usado na volta), ou
+  nulos quando não há. PUT altera um ou os dois; cada ponto precisa pertencer
+  à rota e ao menos um deve vir. DELETE esquece os dois ("esquecer minha
+  escolha"): o app volta a perguntar a cada confirmação.
   Requer **JWT token** de aluno inscrito na rota; os demais recebem 403.
 operationId: meuPontoEmbarqueRota
 security:
@@ -21,21 +22,23 @@ parameters:
     description: Somente no PUT.
     schema:
       type: object
-      required: [ponto_id]
       properties:
-        ponto_id:
+        ponto_embarque_id:
           type: string
           example: "9d0a2e57-8b4c-4c3b-a3f1-0e5d2b7a6c10"
+        ponto_desembarque_id:
+          type: string
+          example: "5a1c3e77-2b9d-4f60-8c14-7e0b6d2a9f31"
 responses:
   200:
-    description: Ponto padrão atual.
+    description: Pontos lembrados atuais (GET, PUT e DELETE).
     schema:
       type: object
       example:
         rota_id: "3b7e1c44-6a2d-4f08-b1e9-5c8d9a0f7e22"
-        ponto_id: "9d0a2e57-8b4c-4c3b-a3f1-0e5d2b7a6c10"
-        ponto_apelido: "Praça Central"
+        ponto_embarque: {id: "9d0a2e57-8b4c-4c3b-a3f1-0e5d2b7a6c10", apelido: "Praça Central"}
+        ponto_desembarque: null
   400:
-    description: Ponto não pertence à rota ou id inválido.
+    description: Ponto fora da rota (`details.field` traz o campo), id inválido ou corpo sem pontos.
   403:
     description: Usuário não é aluno inscrito na rota.

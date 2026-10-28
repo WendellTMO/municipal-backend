@@ -247,6 +247,18 @@ def _campos_de_endereco(dados_endereco: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def gravar_endereco_de_moradia(aluno: Aluno, dados: dict[str, Any]) -> None:
+    """Guarda onde o aluno mora, sem coordenadas e sem criar ponto de casa.
+
+    shortcut: sem geocodificação, o aluno de convite fica sem ponto_casa_id.
+    Quando houver geocodificação, criar o Ponto aqui e preencher aluno.ponto_casa_id.
+    """
+    campos = _campos_de_endereco(dados)
+    campos["estado"] = dados["estado"].upper()
+    campos["complemento"] = dados.get("complemento")
+    db.session.add(Endereco(aluno_id=aluno.id, **campos))
+
+
 def _atualizar_endereco_casa(aluno: Aluno, data: dict[str, Any]) -> None:
     """Atualiza o ponto de casa do aluno, criando-o quando ainda não existe."""
     dados_endereco = data["endereco_casa"]

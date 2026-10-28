@@ -49,6 +49,12 @@ class Endereco(db.Model):
     bairro = db.Column(db.String(100))
     cidade = db.Column(db.String(100))
     cep = db.Column(db.String(10))
+    estado = db.Column(db.String(2))
+    complemento = db.Column(db.String(100))
+    # Endereço de moradia do aluno, sem ponto: some junto com a conta.
+    aluno_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("aluno.usuario_id", ondelete="CASCADE"), nullable=True
+    )
 
     ponto_id = db.Column(
         UUID(as_uuid=True),

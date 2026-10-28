@@ -1,6 +1,7 @@
 from marshmallow import fields, validate
 
 from app.schemas.common import BaseSchema
+from app.schemas.endereco_schema import EnderecoMoradiaInputSchema
 from app.schemas.validators import validate_optional_cpf, validate_optional_phone
 
 
@@ -22,7 +23,6 @@ class ConviteResponseSchema(BaseSchema):
     nome = fields.String()
     email = fields.String()
     telefone = fields.String(allow_none=True)
-    ponto_id = fields.String(allow_none=True)
     instituicao_id = fields.String(allow_none=True)
     rota_id = fields.String(allow_none=True)
     status = fields.String()
@@ -49,6 +49,7 @@ class ConviteAceiteRequestSchema(BaseSchema):
     cpf = fields.String(required=True, validate=validate.Length(min=1))
     data_nascimento = fields.Date(required=True, format="%Y-%m-%d")
     aceite_termos = fields.Boolean(required=True)
+    endereco = fields.Nested(EnderecoMoradiaInputSchema, required=True)
     telefone = fields.String(load_default=None, allow_none=True, validate=validate_optional_phone)
     nome_responsavel = fields.String(load_default=None, allow_none=True)
     cpf_responsavel = fields.String(

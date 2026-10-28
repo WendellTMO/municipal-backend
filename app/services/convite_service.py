@@ -28,8 +28,8 @@ from app.models.convite import (
     Convite,
 )
 from app.models.enum import UserRole, UserStatus
-from app.models.geo import Instituicao, Ponto
-from app.models.rota import Rota, RotaAluno, RotaPonto
+from app.models.geo import Instituicao
+from app.models.rota import Rota, RotaAluno
 from app.models.user import Aluno, User
 from app.schemas.validators import validate_phone
 from app.services import aluno_service
@@ -47,9 +47,14 @@ LIMITE_ENVIO_POR_EXECUCAO = 50
 TERMOS_DE_USO_VERSAO = "demo-1"
 TERMOS_DE_USO_TEXTO = (
     "Ao continuar, você concorda em usar o BusKá apenas para o transporte escolar e autoriza "
-    "o uso dos seus dados (nome, e-mail, CPF, ponto de embarque) pelos gestores do transporte. "
+    "o uso dos seus dados (nome, e-mail, CPF, endereço) pelos gestores do transporte. "
     "Esta é a versão de demonstração."
 )
+
+ENDERECO_CAMPOS = {
+    "obrigatorios": ["logradouro", "numero", "bairro", "cidade", "estado"],
+    "opcionais": ["cep", "complemento"],
+}
 
 CONVITE_INVALIDO = "Convite inválido ou expirado"
 PIN_BLOQUEADO = "Muitas tentativas de PIN. Peça o reenvio do convite ao gestor."
@@ -172,7 +177,6 @@ def _validar_item(item: dict[str, Any], validos: dict[str, set[str]]) -> dict[st
         "email": email,
         "nome": nome,
         "telefone": telefone,
-        "ponto_id": _id_opcional(item, "ponto_id", "Ponto", validos["ponto_id"]),
         "instituicao_id": _id_opcional(
             item, "instituicao_id", "Instituição", validos["instituicao_id"]
         ),
@@ -219,19 +223,9 @@ def criar_convites(gestor_id: str, itens: list[dict[str, Any]]) -> list[dict[str
     for existente in consulta.all():
         por_email[existente.email] = existente
     validos = {
-        "ponto_id": _ids_validos(Ponto, itens, "ponto_id", prefeitura_id),
         "instituicao_id": _ids_validos(Instituicao, itens, "instituicao_id", prefeitura_id),
         "rota_id": _ids_validos(Rota, itens, "rota_id", prefeitura_id),
     }
-
-    # Pares (rota, ponto) que existem nas rotas citadas no lote, numa query só.
-    pares_rota_ponto: set[tuple[str, str]] = set()
-    if validos["rota_id"]:
-        consulta_pares = db.session.query(RotaPonto.rota_id, RotaPonto.ponto_id).filter(
-            RotaPonto.rota_id.in_(list(validos["rota_id"]))
-        )
-        for rota_id_par, ponto_id_par in consulta_pares.all():
-            pares_rota_ponto.add((str(rota_id_par), str(ponto_id_par)))
 
     resultados: list[dict[str, Any]] = []
     gravados: dict[str, Convite] = {}
@@ -251,15 +245,6 @@ def criar_convites(gestor_id: str, itens: list[dict[str, Any]]) -> list[dict[str
                 continue
 
             email = dados["email"]
-            if dados["ponto_id"] and not dados["rota_id"]:
-                motivo = "Ponto de embarque exige uma rota"
-                resultados.append(_linha(posicao, email, "INVALIDO", motivo))
-                continue
-            if dados["ponto_id"] and (dados["rota_id"], dados["ponto_id"]) not in pares_rota_ponto:
-                motivo = "O ponto de embarque não pertence à rota"
-                resultados.append(_linha(posicao, email, "INVALIDO", motivo))
-                continue
-
             if email in emails_com_conta:
                 resultados.append(_linha(posicao, email, "PULADO", "E-mail já possui conta"))
                 continue
@@ -279,7 +264,6 @@ def criar_convites(gestor_id: str, itens: list[dict[str, Any]]) -> list[dict[str
             convite.criado_por_id = gestor_uuid
             convite.nome = dados["nome"]
             convite.telefone = dados["telefone"]
-            convite.ponto_id = dados["ponto_id"]
             convite.instituicao_id = dados["instituicao_id"]
             convite.rota_id = dados["rota_id"]
             _voltar_para_fila(convite)
@@ -404,12 +388,11 @@ def validar_pin(token: str, pin: str) -> dict[str, Any]:
         "nome": convite.nome,
         "email": convite.email,
         "telefone": convite.telefone,
-        "ponto_id": str(convite.ponto_id) if convite.ponto_id else None,
-        "ponto_apelido": convite.ponto.apelido if convite.ponto else None,
         "instituicao_id": str(convite.instituicao_id) if convite.instituicao_id else None,
         "instituicao_nome": convite.instituicao.nome if convite.instituicao else None,
         "rota_id": str(convite.rota_id) if convite.rota_id else None,
         "rota_nome": convite.rota.nome if convite.rota else None,
+        "endereco_campos": ENDERECO_CAMPOS,
         "termos_versao": TERMOS_DE_USO_VERSAO,
         "termos_texto": TERMOS_DE_USO_TEXTO,
     }
@@ -466,23 +449,8 @@ def aceitar_convite(token: str, dados: dict[str, Any]) -> Aluno:
         db.session.flush()
 
         if convite.rota_id:
-            ponto_padrao_id = None
-            if convite.ponto_id:
-                na_rota = RotaPonto.query.filter_by(
-                    rota_id=convite.rota_id, ponto_id=convite.ponto_id
-                ).first()
-                if na_rota is None:
-                    # A rota mudou depois do convite: o aluno entra sem ponto padrão.
-                    logger.warning("Ponto do convite %s não está mais na rota", convite.id)
-                else:
-                    ponto_padrao_id = convite.ponto_id
-            db.session.add(
-                RotaAluno(
-                    rota_id=convite.rota_id,
-                    aluno_id=aluno.id,
-                    ponto_embarque_padrao_id=ponto_padrao_id,
-                )
-            )
+            db.session.add(RotaAluno(rota_id=convite.rota_id, aluno_id=aluno.id))
+        aluno_service.gravar_endereco_de_moradia(aluno, dados["endereco"])
 
         convite.status = ACEITO
         convite.aceito_em = agora

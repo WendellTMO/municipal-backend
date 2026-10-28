@@ -5,9 +5,11 @@ description: |
   Sem autenticação. Confere o PIN de novo (mesmo limite de 5 falhas). Maior
   de idade entra ACTIVE. Menor de 18 anos entra PENDING_SIGNUP e exige
   `nome_responsavel` e `email_responsavel`; o responsável recebe o e-mail de
-  consentimento do fluxo existente. A rota do convite vira inscrição e o ponto
-  do convite vira o ponto de embarque padrão do aluno nessa rota
-  (`rota_aluno.ponto_embarque_padrao_id`). CPF ou e-mail já cadastrados respondem 409.
+  consentimento do fluxo existente. A rota do convite vira inscrição, sem ponto
+  padrão: o aluno escolhe os pontos ao confirmar presença. O objeto `endereco`
+  (onde o aluno mora) é obrigatório e fica em `endereco` ligado ao aluno; não há
+  geocodificação, então o aluno entra sem `ponto_casa_id`. Endereço ausente ou
+  incompleto responde 400 com o campo. CPF ou e-mail já cadastrados respondem 409.
 operationId: aceitarConvite
 parameters:
   - in: path
@@ -25,6 +27,17 @@ parameters:
         cpf: {type: string, example: "529.982.247-25"}
         data_nascimento: {type: string, example: "1990-05-20"}
         aceite_termos: {type: boolean, example: true}
+        endereco:
+          type: object
+          required: [logradouro, numero, bairro, cidade, estado]
+          properties:
+            logradouro: {type: string, example: "Rua das Flores"}
+            numero: {type: string, example: "120"}
+            bairro: {type: string, example: "Centro"}
+            cidade: {type: string, example: "Campina Grande"}
+            estado: {type: string, example: "PB"}
+            cep: {type: string, example: "58400-000"}
+            complemento: {type: string, example: "Apto 2"}
         telefone: {type: string}
         nome_responsavel: {type: string}
         cpf_responsavel: {type: string}

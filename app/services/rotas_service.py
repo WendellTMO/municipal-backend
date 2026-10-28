@@ -185,30 +185,56 @@ def _inscricao_do_aluno(user_id: str, rota_id: str) -> RotaAluno:
     return inscricao
 
 
-def _ponto_padrao_resposta(inscricao: RotaAluno) -> dict[str, Any]:
-    ponto = inscricao.ponto_embarque_padrao
+def _ponto_resumo(ponto: Ponto | None) -> dict[str, Any] | None:
+    if ponto is None:
+        return None
+    return {"id": str(ponto.id), "apelido": ponto.apelido}
+
+
+def _padroes_resposta(inscricao: RotaAluno) -> dict[str, Any]:
     return {
         "rota_id": str(inscricao.rota_id),
-        "ponto_id": str(ponto.id) if ponto else None,
-        "ponto_apelido": ponto.apelido if ponto else None,
+        "ponto_embarque": _ponto_resumo(inscricao.ponto_embarque_padrao),
+        "ponto_desembarque": _ponto_resumo(inscricao.ponto_desembarque_padrao),
     }
 
 
 def get_meu_ponto_embarque(user_id: str, rota_id: str) -> dict[str, Any]:
-    return _ponto_padrao_resposta(_inscricao_do_aluno(user_id, rota_id))
+    return _padroes_resposta(_inscricao_do_aluno(user_id, rota_id))
 
 
 def set_meu_ponto_embarque(user_id: str, rota_id: str, data: dict[str, Any]) -> dict[str, Any]:
-    """O aluno escolhe, entre os pontos da rota, onde costuma embarcar."""
+    """O aluno escolhe, entre os pontos da rota, onde costuma embarcar e onde costuma descer."""
     inscricao = _inscricao_do_aluno(user_id, rota_id)
-    ponto_id = data["ponto_id"]
-    na_rota = RotaPonto.query.filter_by(rota_id=inscricao.rota_id, ponto_id=ponto_id).first()
-    if na_rota is None:
-        raise ValidationError("O ponto não pertence a esta rota")
+    if data.get("ponto_embarque_id") is None and data.get("ponto_desembarque_id") is None:
+        raise ValidationError(
+            "Informe ponto_embarque_id ou ponto_desembarque_id",
+            details={"field": "ponto_embarque_id"},
+        )
+
+    for campo in ("ponto_embarque_id", "ponto_desembarque_id"):
+        ponto_id = data.get(campo)
+        if ponto_id is None:
+            continue
+        na_rota = RotaPonto.query.filter_by(rota_id=inscricao.rota_id, ponto_id=ponto_id).first()
+        if na_rota is None:
+            raise ValidationError("O ponto não pertence a esta rota", details={"field": campo})
 
     with transactional():
-        inscricao.ponto_embarque_padrao_id = ponto_id
-    return _ponto_padrao_resposta(inscricao)
+        if data.get("ponto_embarque_id") is not None:
+            inscricao.ponto_embarque_padrao_id = data["ponto_embarque_id"]
+        if data.get("ponto_desembarque_id") is not None:
+            inscricao.ponto_desembarque_padrao_id = data["ponto_desembarque_id"]
+    return _padroes_resposta(inscricao)
+
+
+def esquecer_meu_ponto_embarque(user_id: str, rota_id: str) -> dict[str, Any]:
+    """Limpa as duas escolhas lembradas: o app volta a perguntar a cada confirmação."""
+    inscricao = _inscricao_do_aluno(user_id, rota_id)
+    with transactional():
+        inscricao.ponto_embarque_padrao_id = None
+        inscricao.ponto_desembarque_padrao_id = None
+    return _padroes_resposta(inscricao)
 
 
 def create_rota(gestor_id: str, data: dict[str, Any]) -> Rota:
