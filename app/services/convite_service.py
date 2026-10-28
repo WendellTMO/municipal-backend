@@ -2,7 +2,6 @@
 
 import hashlib
 import hmac
-import html
 import logging
 import os
 import secrets
@@ -35,6 +34,7 @@ from app.schemas.validators import validate_phone
 from app.services import aluno_service
 from app.utils import audit_logger, validate_cpf, validate_email, validate_password, validate_uuid
 from app.utils.email_sender import mail_configurado, send_email
+from app.utils.email_template import montar_email_html
 
 logger = logging.getLogger(__name__)
 
@@ -485,14 +485,21 @@ def _montar_email(convite: Convite, link: str, pin: str) -> tuple[str, str, str]
         f"O convite vale por {VALIDADE_DIAS} dias. "
         "Se você não esperava este e-mail, ignore esta mensagem."
     )
-    pagina = (
-        f"<p>Olá, {html.escape(convite.nome)}!</p>"
-        "<p>Você foi convidado(a) para usar o BusKá, o app do transporte escolar.</p>"
-        "<p>Para concluir o seu cadastro, abra o link abaixo e informe o código de acesso.</p>"
-        f'<p><a href="{link}">Concluir meu cadastro</a></p>'
-        f"<p>Código de acesso (PIN): <strong>{pin}</strong></p>"
-        f"<p>O convite vale por {VALIDADE_DIAS} dias. "
-        "Se você não esperava este e-mail, ignore esta mensagem.</p>"
+    pagina = montar_email_html(
+        titulo="Seu convite para o BusKá",
+        preheader="Conclua seu cadastro no BusKá com o link e o código de acesso.",
+        saudacao=f"Olá, {convite.nome}!",
+        paragrafos=[
+            "Você foi convidado(a) para usar o BusKá, o app do transporte escolar.",
+            "Para concluir o seu cadastro, toque no botão abaixo e informe o código de acesso.",
+        ],
+        botao_texto="Concluir meu cadastro",
+        botao_url=link,
+        pin=pin,
+        validade=(
+            f"O convite vale por {VALIDADE_DIAS} dias. "
+            "Se você não esperava este e-mail, ignore esta mensagem."
+        ),
     )
     return assunto, texto, pagina
 
@@ -536,7 +543,13 @@ def processar_envios() -> int:
         if mail_configurado():
             assunto, texto, pagina = _montar_email(convite, link, pin)
             try:
-                send_email(to=convite.email, subject=assunto, body_plain=texto, body_html=pagina)
+                send_email(
+                    to=convite.email,
+                    subject=assunto,
+                    body_plain=texto,
+                    body_html=pagina,
+                    logo_inline=True,
+                )
             except Exception:
                 convite.envio_tentativas += 1
                 _desfazer_credenciais(convite)
