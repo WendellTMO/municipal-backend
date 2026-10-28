@@ -20,9 +20,9 @@ from app.models.prefeitura import Prefeitura
 from app.models.user import Gestor, Motorista, User
 
 # CPFs e CNH de teste, só para preencher campos obrigatórios e únicos
-CPF_GESTOR = "11144477735"
-CPF_MOTORISTA = "52998224725"
-CNH_MOTORISTA = "99999999901"
+CPF_GESTOR = "39053344705"
+CPF_MOTORISTA = "16899535009"
+CNH_MOTORISTA = "88888888802"
 PLACA_ONIBUS = "BUS0D30"
 
 
