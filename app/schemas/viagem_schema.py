@@ -96,6 +96,8 @@ class ViagemConfirmacaoRequestSchema(BaseSchema):
 
     confirmacao = fields.Boolean(required=True)
     ponto_embarque_id = fields.UUID(load_default=None, allow_none=True)
+    ponto_desembarque_id = fields.UUID(load_default=None, allow_none=True)
+    lembrar_escolha = fields.Boolean(load_default=False)
 
 
 class ViagemAcaoRequestSchema(BaseSchema):
@@ -279,6 +281,8 @@ class ViagemAgendaAlunoResponseSchema(BaseSchema):
     rota_nome = fields.Method("get_rota_nome")
     status_confirmacao = fields.Method("get_status_confirmacao")
     ponto_embarque_id = fields.Method("get_ponto_embarque_id")
+    ponto_destino_id = fields.Method("get_ponto_destino_id")
+    precisa_escolher_ponto = fields.Method("get_precisa_escolher_ponto")
     # Trip status and capacity — exposed so students can see bus occupancy
     status_viagem = fields.Method("get_status_viagem")
     alunos_confirmados_count = fields.Method("get_alunos_confirmados_count")
@@ -353,8 +357,21 @@ class ViagemAgendaAlunoResponseSchema(BaseSchema):
         c = self._find_confirmacao(obj)
         if c and c.ponto_embarque_id:
             return str(c.ponto_embarque_id)
-        padrao = getattr(obj, "ponto_embarque_padrao_id", None)
+        padrao = getattr(obj, "ponto_embarque_sugerido_id", None)
         return str(padrao) if padrao else None
+
+    def get_ponto_destino_id(self, obj):
+        c = self._find_confirmacao(obj)
+        if c and c.ponto_destino_id:
+            return str(c.ponto_destino_id)
+        padrao = getattr(obj, "ponto_destino_sugerido_id", None)
+        return str(padrao) if padrao else None
+
+    def get_precisa_escolher_ponto(self, obj):
+        c = self._find_confirmacao(obj)
+        if c and c.confirmacao:
+            return False
+        return bool(getattr(obj, "precisa_escolher_ponto", False))
 
 
 class ViagemListResponseSchema(BaseSchema):

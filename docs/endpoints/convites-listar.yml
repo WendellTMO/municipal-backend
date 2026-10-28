@@ -24,7 +24,6 @@ responses:
             nome: "Ana Souza"
             email: "ana@exemplo.test"
             telefone: "83999998888"
-            ponto_id: null
             instituicao_id: null
             rota_id: null
             status: "ENVIADO"

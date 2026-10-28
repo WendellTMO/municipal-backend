@@ -112,7 +112,7 @@ uv run python scripts/convidar_csv.py scripts/exemplo_convites.csv --dry-run   #
 uv run python scripts/convidar_csv.py scripts/exemplo_convites.csv             # cria os convites
 ```
 
-Colunas: `nome` e `email` (obrigatórias), `telefone`, `ponto` (apelido ou id de um ponto da rota da linha, que passa a ser o ponto de embarque padrão do aluno; exige `rota`), `instituicao` (nome) e `rota` (nome). O resultado sai por linha: CRIADO, RENOVADO, PULADO ou INVALIDO. Veja `scripts/exemplo_convites.csv`.
+Colunas: `nome` e `email` (obrigatórias), `telefone`, `instituicao` (nome) e `rota` (nome). O resultado sai por linha: CRIADO, RENOVADO, PULADO ou INVALIDO. Veja `scripts/exemplo_convites.csv`.
 
 ## 📁 Estrutura do Projeto
 

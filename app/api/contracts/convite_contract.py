@@ -10,7 +10,6 @@ def register_models(api):
             "nome": fields.String(required=True, description="Nome do aluno"),
             "email": fields.String(required=True, description="E-mail do aluno"),
             "telefone": fields.String(description="Telefone com DDD"),
-            "ponto_id": fields.String(description="Ponto da casa do aluno (UUID)"),
             "instituicao_id": fields.String(description="Instituição (UUID)"),
             "rota_id": fields.String(description="Rota em que o aluno será inscrito (UUID)"),
         },
@@ -39,7 +38,6 @@ def register_models(api):
             "nome": fields.String(),
             "email": fields.String(),
             "telefone": fields.String(),
-            "ponto_id": fields.String(),
             "instituicao_id": fields.String(),
             "rota_id": fields.String(),
             "status": fields.String(description="PENDENTE, ENVIADO, ACEITO, CANCELADO, EXPIRADO"),
@@ -58,6 +56,18 @@ def register_models(api):
     validar_pin_request = api.model(
         "ConviteValidarPinRequest", {"pin": fields.String(required=True)}
     )
+    endereco_moradia = api.model(
+        "ConviteEnderecoMoradia",
+        {
+            "logradouro": fields.String(required=True),
+            "numero": fields.String(required=True),
+            "bairro": fields.String(required=True),
+            "cidade": fields.String(required=True),
+            "estado": fields.String(required=True, description="UF com 2 letras"),
+            "cep": fields.String(),
+            "complemento": fields.String(),
+        },
+    )
     aceite_request = api.model(
         "ConviteAceiteRequest",
         {
@@ -66,6 +76,7 @@ def register_models(api):
             "cpf": fields.String(required=True),
             "data_nascimento": fields.String(required=True, description="YYYY-MM-DD"),
             "aceite_termos": fields.Boolean(required=True),
+            "endereco": fields.Nested(endereco_moradia, required=True),
             "telefone": fields.String(),
             "nome_responsavel": fields.String(description="Obrigatório para menor de 18 anos"),
             "cpf_responsavel": fields.String(),

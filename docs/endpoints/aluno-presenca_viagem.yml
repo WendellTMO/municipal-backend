@@ -6,11 +6,17 @@ description: |
   Permite que o aluno confirme ou cancele sua presença em uma viagem específica.
   Apenas usuários com o papel **aluno** podem acessar este endpoint.
   Requer um **JWT token** válido no cabeçalho `Authorization`.
-  Ao confirmar, o corpo traz `confirmacao` e, opcionalmente, `ponto_embarque_id`
-  (ponto da rota). Sem ele vale o ponto de embarque padrão do aluno na rota
-  (`PUT /v1/rotas/{id}/meu-ponto-embarque`); sem padrão, a resposta é 400.
-  O destino na ida é o ponto da instituição do aluno; na volta é o próprio
-  ponto de embarque.
+  Corpo: `confirmacao`, `ponto_embarque_id?`, `ponto_desembarque_id?` e
+  `lembrar_escolha?` (padrão false). Os pontos precisam pertencer à rota; sem
+  eles vale o padrão lembrado do aluno (`/v1/rotas/{id}/meu-ponto-embarque`).
+  IDA: o aluno escolhe o embarque e desce no ponto da instituição dele; sem
+  embarque, 400 com `details.field` ponto_embarque_id. VOLTA: o embarque é o
+  ponto da instituição e o aluno escolhe o ponto onde desce
+  (`ponto_desembarque_id`). CIRCULAR: tratada como IDA no embarque e exige
+  também `ponto_desembarque_id` (ou padrão). Aluno sem instituição com ponto
+  recebe 400 na IDA e na VOLTA. Com `lembrar_escolha` verdadeiro, os pontos
+  escolhidos no corpo viram padrão (embarque na IDA, desembarque na VOLTA).
+  Sem lembrar, nada é gravado e padrões existentes ficam. Cancelar não apaga padrões.
 operationId: alterarPresencaViagemAluno
 security:
   - BearerAuth: []

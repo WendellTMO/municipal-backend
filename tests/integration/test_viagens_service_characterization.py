@@ -243,23 +243,29 @@ def test_confirmar_presenca_cria_registro_negativo_quando_nao_existe(
     )
 
 
-def test_confirmar_presenca_com_ponto_fora_da_rota_404(
+def test_confirmar_presenca_com_ponto_fora_da_rota_400(
     _db, aluno, prefeitura, rota_aluno, viagem_futura_agendada_com_motorista
 ):
     ponto_alheio = _ponto(_db, prefeitura.id, -23.0, -46.0, "Fora da rota")
 
-    with pytest.raises(NotFoundError) as exc:
+    with pytest.raises(ValidationError) as exc:
         confirmar_presenca_aluno(
             str(aluno.user.id),
             str(viagem_futura_agendada_com_motorista.id),
             {"confirmacao": True, "ponto_embarque_id": str(ponto_alheio.id)},
         )
 
-    assert exc.value.message == "Ponto de embarque não encontrado na rota"
+    assert exc.value.details["field"] == "ponto_embarque_id"
 
 
 def test_confirmar_presenca_confirma_e_grava_ponto_de_embarque(
-    _db, aluno, ponto, rota_aluno, rota_ponto, viagem_futura_agendada_com_motorista
+    _db,
+    aluno,
+    aluno_com_instituicao,
+    ponto,
+    rota_aluno,
+    rota_ponto,
+    viagem_futura_agendada_com_motorista,
 ):
     registro = confirmar_presenca_aluno(
         str(aluno.user.id),
@@ -271,8 +277,8 @@ def test_confirmar_presenca_confirma_e_grava_ponto_de_embarque(
     assert str(registro.ponto_embarque_id) == str(ponto.id)
 
 
-def test_confirmar_presenca_volta_desembarca_no_ponto_de_embarque(
-    _db, aluno, rota, rota_aluno, rota_ponto, ponto
+def test_confirmar_presenca_volta_embarca_na_instituicao_e_desce_no_ponto_escolhido(
+    _db, aluno, aluno_com_instituicao, ponto_instituicao, rota, rota_aluno, rota_ponto, ponto
 ):
     horario = _horario_operando_em(
         _db, rota, date.today() + timedelta(days=5), sentido=SentidoViagem.VOLTA
@@ -282,14 +288,21 @@ def test_confirmar_presenca_volta_desembarca_no_ponto_de_embarque(
     registro = confirmar_presenca_aluno(
         str(aluno.user.id),
         str(viagem.id),
-        {"confirmacao": True, "ponto_embarque_id": str(ponto.id)},
+        {"confirmacao": True, "ponto_desembarque_id": str(ponto.id)},
     )
 
+    assert registro.ponto_embarque_id == ponto_instituicao.id
     assert registro.ponto_destino_id == ponto.id
 
 
 def test_confirmar_presenca_sem_ponto_usa_o_padrao_da_inscricao(
-    _db, aluno, rota_aluno, rota_ponto, ponto, viagem_futura_agendada_com_motorista
+    _db,
+    aluno,
+    aluno_com_instituicao,
+    rota_aluno,
+    rota_ponto,
+    ponto,
+    viagem_futura_agendada_com_motorista,
 ):
     rota_aluno.ponto_embarque_padrao_id = ponto.id
     _db.session.commit()
@@ -320,6 +333,7 @@ def test_confirmar_presenca_sem_ponto_e_sem_padrao_da_400(
 def test_confirmar_presenca_ponto_informado_vence_o_padrao(
     _db,
     aluno,
+    aluno_com_instituicao,
     prefeitura,
     rota,
     rota_aluno,
@@ -341,7 +355,7 @@ def test_confirmar_presenca_ponto_informado_vence_o_padrao(
     assert registro.ponto_embarque_id == outro.id
 
 
-def test_confirmar_presenca_ida_sem_instituicao_deixa_destino_nulo(
+def test_confirmar_presenca_ida_sem_instituicao_da_400(
     _db, aluno, rota, rota_aluno, rota_ponto, ponto
 ):
     horario = _horario_operando_em(
@@ -349,17 +363,24 @@ def test_confirmar_presenca_ida_sem_instituicao_deixa_destino_nulo(
     )
     viagem = _viagem(_db, horario, date.today() + timedelta(days=5))
 
-    registro = confirmar_presenca_aluno(
-        str(aluno.user.id),
-        str(viagem.id),
-        {"confirmacao": True, "ponto_embarque_id": str(ponto.id)},
-    )
+    with pytest.raises(ValidationError) as exc:
+        confirmar_presenca_aluno(
+            str(aluno.user.id),
+            str(viagem.id),
+            {"confirmacao": True, "ponto_embarque_id": str(ponto.id)},
+        )
 
-    assert registro.ponto_destino_id is None
+    assert "instituição" in exc.value.message
 
 
 def test_confirmar_presenca_desconfirma_limpa_pontos(
-    _db, aluno, ponto, rota_aluno, rota_ponto, viagem_futura_agendada_com_motorista
+    _db,
+    aluno,
+    aluno_com_instituicao,
+    ponto,
+    rota_aluno,
+    rota_ponto,
+    viagem_futura_agendada_com_motorista,
 ):
     confirmar_presenca_aluno(
         str(aluno.user.id),

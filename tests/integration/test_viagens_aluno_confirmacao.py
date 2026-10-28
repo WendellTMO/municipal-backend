@@ -25,7 +25,7 @@ def test_confirmar_presenca_viagem_not_found(aluno):
 def test_confirmar_presenca_marshmallow_requires_ponto_if_confirmacao_true(
     aluno, rota_aluno, viagem_futura_agendada_com_motorista, dia_operacao
 ):
-    # schema exige ponto_embarque_id quando confirmacao=True
+    # o service exige o ponto quando confirmacao=True e não há padrão
     r = aluno.client.put(
         f"/v1/viagens/{viagem_futura_agendada_com_motorista.id}/confirmacao",
         json={"confirmacao": True},
@@ -50,11 +50,13 @@ def test_confirmar_presenca_ponto_must_exist_in_rota(
         f"/v1/viagens/{viagem_futura_agendada_com_motorista.id}/confirmacao",
         json={"confirmacao": True, "ponto_embarque_id": "00000000-0000-0000-0000-000000000029"},
     )
-    assert r.status_code == 404
+    assert r.status_code == 400
+    assert r.get_json()["error"]["details"]["field"] == "ponto_embarque_id"
 
 
 def test_confirmar_presenca_success_confirm_and_unconfirm(
     aluno,
+    aluno_com_instituicao,
     rota_aluno,
     viagem_futura_agendada_com_motorista,
     dia_operacao,

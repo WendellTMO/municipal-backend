@@ -144,15 +144,90 @@ def get_proximas_viagens_aluno(user_id: str) -> list[Viagem]:
 
     viagens = query.all()
 
-    # Ponto padrão do aluno em cada rota, para o app confirmar com um toque.
-    padroes: dict[Any, Any] = {}
-    inscricoes = RotaAluno.query.filter_by(aluno_id=aluno.id).all()
-    for inscricao in inscricoes:
-        padroes[inscricao.rota_id] = inscricao.ponto_embarque_padrao_id
+    # Sugestão de pontos por viagem: a instituição fica de um lado, o padrão lembrado do outro.
+    ponto_instituicao = _ponto_da_instituicao(aluno)
+    inscricoes: dict[Any, RotaAluno] = {}
+    for inscricao in RotaAluno.query.filter_by(aluno_id=aluno.id).all():
+        inscricoes[inscricao.rota_id] = inscricao
     for viagem in viagens:
-        viagem.ponto_embarque_padrao_id = padroes.get(viagem.horario_rota.rota_id)
+        inscricao = inscricoes[viagem.horario_rota.rota_id]
+        sentido = viagem.horario_rota.sentido
+        padrao_embarque = inscricao.ponto_embarque_padrao_id
+        padrao_desembarque = inscricao.ponto_desembarque_padrao_id
+        if sentido == SentidoViagem.VOLTA:
+            viagem.ponto_embarque_sugerido_id = ponto_instituicao
+            viagem.ponto_destino_sugerido_id = padrao_desembarque
+            viagem.precisa_escolher_ponto = padrao_desembarque is None
+        elif sentido == SentidoViagem.CIRCULAR:
+            viagem.ponto_embarque_sugerido_id = padrao_embarque
+            viagem.ponto_destino_sugerido_id = padrao_desembarque
+            viagem.precisa_escolher_ponto = padrao_embarque is None or padrao_desembarque is None
+        else:
+            viagem.ponto_embarque_sugerido_id = padrao_embarque
+            viagem.ponto_destino_sugerido_id = ponto_instituicao
+            viagem.precisa_escolher_ponto = padrao_embarque is None
 
     return viagens
+
+
+def _ponto_da_instituicao(aluno: Aluno) -> Any:
+    if aluno.instituicao is None:
+        return None
+    return aluno.instituicao.ponto_id
+
+
+def _ponto_da_rota(rota_id: Any, ponto_id: Any, campo: str) -> Any:
+    """Ponto escolhido pelo aluno: precisa existir e pertencer à rota da viagem."""
+    if ponto_id is None:
+        raise ValidationError(
+            "Escolha o ponto na rota ou defina o seu ponto padrão",
+            details={"field": campo},
+        )
+    na_rota = RotaPonto.query.filter_by(rota_id=rota_id, ponto_id=ponto_id).first()
+    if na_rota is None:
+        raise ValidationError("O ponto não pertence à rota da viagem", details={"field": campo})
+    return ponto_id
+
+
+def _resolver_pontos(
+    aluno: Aluno, horario: HorarioRota, inscricao: RotaAluno, data: dict[str, Any]
+) -> tuple[Any, Any, dict[str, Any]]:
+    """Devolve (embarque, destino, escolhas a lembrar) conforme o sentido da viagem.
+
+    IDA: o aluno escolhe onde embarca e desce na instituição. VOLTA: parte da instituição
+    e o aluno escolhe onde desce. CIRCULAR: o aluno escolhe os dois, na rota.
+    """
+    ponto_instituicao = _ponto_da_instituicao(aluno)
+    escolhas: dict[str, Any] = {}
+
+    embarque = None
+    if horario.sentido != SentidoViagem.VOLTA:
+        embarque = data.get("ponto_embarque_id")
+        if embarque is not None:
+            escolhas["ponto_embarque_padrao_id"] = embarque
+        else:
+            embarque = inscricao.ponto_embarque_padrao_id
+        embarque = _ponto_da_rota(horario.rota_id, embarque, "ponto_embarque_id")
+
+    destino = None
+    if horario.sentido != SentidoViagem.IDA:
+        destino = data.get("ponto_desembarque_id")
+        if destino is not None:
+            escolhas["ponto_desembarque_padrao_id"] = destino
+        else:
+            destino = inscricao.ponto_desembarque_padrao_id
+        destino = _ponto_da_rota(horario.rota_id, destino, "ponto_desembarque_id")
+
+    if horario.sentido == SentidoViagem.IDA:
+        destino = ponto_instituicao
+    elif horario.sentido == SentidoViagem.VOLTA:
+        embarque = ponto_instituicao
+    if ponto_instituicao is None and horario.sentido != SentidoViagem.CIRCULAR:
+        raise ValidationError(
+            "Seu cadastro não tem instituição com ponto de parada. Fale com o gestor.",
+            details={"field": "instituicao_id"},
+        )
+    return embarque, destino, escolhas
 
 
 def confirmar_presenca_aluno(
@@ -170,7 +245,6 @@ def confirmar_presenca_aluno(
         raise ForbiddenError("Aluno não encontrado")
 
     confirmacao: bool = data["confirmacao"]
-    ponto_embarque_id = data.get("ponto_embarque_id")
 
     with transactional():
         viagem = db.session.get(Viagem, viagem_id)
@@ -202,35 +276,17 @@ def confirmar_presenca_aluno(
             if not horario:
                 raise NotFoundError("Horário da viagem não encontrado")
 
-            if ponto_embarque_id is None:
-                inscricao_rota = db.session.get(RotaAluno, (horario.rota_id, aluno.usuario_id))
-                if inscricao_rota is not None:
-                    ponto_embarque_id = inscricao_rota.ponto_embarque_padrao_id
-            if ponto_embarque_id is None:
-                raise ValidationError(
-                    "Informe o ponto de embarque ou defina o seu ponto padrão na rota",
-                    details={"field": "ponto_embarque_id"},
-                )
-
-            ponto_valido = (
-                db.session.query(RotaPonto)
-                .filter_by(rota_id=horario.rota_id, ponto_id=ponto_embarque_id)
-                .first()
-            )
-            if not ponto_valido:
-                raise NotFoundError("Ponto de embarque não encontrado na rota")
-
-            ponto_destino_inferido = None
-            if horario.sentido == SentidoViagem.IDA:
-                if aluno.instituicao and aluno.instituicao.ponto_id:
-                    ponto_destino_inferido = aluno.instituicao.ponto_id
-            else:
-                # Na volta o aluno desce onde embarcou.
-                ponto_destino_inferido = ponto_embarque_id
+            inscricao = db.session.get(RotaAluno, (horario.rota_id, aluno.usuario_id))
+            if inscricao is None:
+                raise ForbiddenError("Você não está inscrito na rota desta viagem")
+            embarque, destino, escolhas = _resolver_pontos(aluno, horario, inscricao, data)
 
             registro.confirmacao = True
-            registro.ponto_embarque_id = ponto_embarque_id
-            registro.ponto_destino_id = ponto_destino_inferido
+            registro.ponto_embarque_id = embarque
+            registro.ponto_destino_id = destino
+            if data.get("lembrar_escolha") is True:
+                for coluna, ponto_id in escolhas.items():
+                    setattr(inscricao, coluna, ponto_id)
         else:
             registro.confirmacao = False
             registro.ponto_embarque_id = None

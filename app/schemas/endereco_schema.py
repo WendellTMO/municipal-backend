@@ -1,4 +1,4 @@
-from marshmallow import fields
+from marshmallow import fields, validate
 
 from app.schemas.common import BaseSchema
 
@@ -11,6 +11,20 @@ class EnderecoInputSchema(BaseSchema):
     cep = fields.String(required=True)
     latitude = fields.Float(required=True)
     longitude = fields.Float(required=True)
+
+
+class EnderecoMoradiaInputSchema(BaseSchema):
+    """Endereço de moradia informado no aceite do convite, sem coordenadas."""
+
+    logradouro = fields.String(required=True, validate=validate.Length(min=1, max=150))
+    numero = fields.String(required=True, validate=validate.Length(min=1, max=20))
+    bairro = fields.String(required=True, validate=validate.Length(min=1, max=100))
+    cidade = fields.String(required=True, validate=validate.Length(min=1, max=100))
+    estado = fields.String(required=True, validate=validate.Regexp(r"^[A-Za-z]{2}$"))
+    cep = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=10))
+    complemento = fields.String(
+        load_default=None, allow_none=True, validate=validate.Length(max=100)
+    )
 
 
 class EnderecoResponseSchema(BaseSchema):

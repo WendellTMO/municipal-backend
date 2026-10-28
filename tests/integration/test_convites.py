@@ -7,7 +7,7 @@ import pytest
 
 from app.models.convite import ACEITO, CANCELADO, ENVIADO, EXPIRADO, PENDENTE, Convite
 from app.models.enum import TipoInstituicao, UserStatus
-from app.models.geo import Instituicao, Ponto
+from app.models.geo import Endereco, Instituicao
 from app.models.rota import RotaAluno
 from app.models.user import Aluno
 from app.services import convite_service
@@ -18,6 +18,14 @@ pytestmark = pytest.mark.integration
 CPF_A = "52998224725"
 CPF_B = "11144477735"
 ADULTO = "1990-05-20"
+ENDERECO = {
+    "logradouro": "Rua das Flores",
+    "numero": "120",
+    "bairro": "Centro",
+    "cidade": "Campina Grande",
+    "estado": "pb",
+    "cep": "58400-000",
+}
 
 
 def _lote(gestor, convites):
@@ -46,6 +54,7 @@ def _aceite(client, token, pin, **extra):
         "cpf": CPF_A,
         "data_nascimento": ADULTO,
         "aceite_termos": True,
+        "endereco": ENDERECO,
         **extra,
     }
     return client.post(f"/v1/convites/aceite/{token}", json=corpo)
@@ -60,7 +69,7 @@ def test_lote_com_linhas_validas_e_invalidas(gestor, aluno, other_prefeitura, _d
             {"email": "semnome@exemplo.test"},
             {"nome": "Ja Tem Conta", "email": aluno.user.email},
             {"nome": "Repetido", "email": "ANA@exemplo.test"},
-            {"nome": "Ponto Ruim", "email": "p@exemplo.test", "ponto_id": "nao-e-uuid"},
+            {"nome": "Ponto Ruim", "email": "p@exemplo.test", "instituicao_id": "nao-e-uuid"},
         ],
     )
     assert resp.status_code == 201
@@ -212,12 +221,8 @@ def test_convite_pendente_nao_aceita_token_nenhum(gestor, client, _db):
     )
 
 
-def test_aceite_maior_de_idade_cria_aluno_ativo_com_ponto_e_rota(
-    gestor, client, ponto, rota, rota_ponto, _db
-):
-    convite, token, pin = _convite_enviado(
-        _db, gestor, ponto_id=str(ponto.id), rota_id=str(rota.id)
-    )
+def test_aceite_maior_de_idade_cria_aluno_ativo_com_endereco_e_rota(gestor, client, rota, _db):
+    convite, token, pin = _convite_enviado(_db, gestor, rota_id=str(rota.id))
     r = _aceite(client, token, pin, telefone="(83) 99999-8888")
     assert r.status_code == 201, r.get_data(as_text=True)
     assert r.get_json()["status"] == "ACTIVE"
@@ -229,7 +234,11 @@ def test_aceite_maior_de_idade_cria_aluno_ativo_com_ponto_e_rota(
     assert aluno.cpf == CPF_A and aluno.telefone == "83999998888"
     assert aluno.prefeitura_id == gestor.user.prefeitura_id
     inscricao = RotaAluno.query.filter_by(rota_id=rota.id, aluno_id=aluno.id).one()
-    assert inscricao.ponto_embarque_padrao_id == ponto.id
+    assert inscricao.ponto_embarque_padrao_id is None
+    assert inscricao.ponto_desembarque_padrao_id is None
+    endereco = Endereco.query.filter_by(aluno_id=aluno.id).one()
+    assert endereco.logradouro == "Rua das Flores" and endereco.estado == "PB"
+    assert endereco.ponto_id is None and endereco.complemento is None
     _db.session.refresh(convite)
     assert convite.status == ACEITO and convite.aluno_id == aluno.id
     assert convite.termos_versao == convite_service.TERMOS_DE_USO_VERSAO
@@ -242,49 +251,53 @@ def test_aceite_maior_de_idade_cria_aluno_ativo_com_ponto_e_rota(
     assert _aceite(client, token, pin).status_code == 404
 
 
-def test_lote_valida_ponto_contra_a_rota(gestor, prefeitura, ponto, rota, rota_ponto, _db):
-    fora = Ponto(prefeitura_id=prefeitura.id, latitude=-7.2, longitude=-35.9, apelido="Fora")
-    _db.session.add(fora)
-    _db.session.commit()
-    resp = _lote(
+def test_lote_ignora_ponto_id_e_nao_o_grava(gestor, ponto, rota, _db):
+    r = _lote(
         gestor,
-        [
-            {
-                "nome": "A",
-                "email": "a@exemplo.test",
-                "rota_id": str(rota.id),
-                "ponto_id": str(ponto.id),
-            },
-            {
-                "nome": "B",
-                "email": "b@exemplo.test",
-                "rota_id": str(rota.id),
-                "ponto_id": str(fora.id),
-            },
-            {"nome": "C", "email": "c@exemplo.test", "ponto_id": str(ponto.id)},
-        ],
+        [{"nome": "A", "email": "a@exemplo.test", "rota_id": str(rota.id), "ponto_id": "x"}],
     )
-    itens = resp.get_json()["items"]
-    assert [i["resultado"] for i in itens] == ["CRIADO", "INVALIDO", "INVALIDO"]
-    assert "não pertence" in itens[1]["motivo"]
-    assert "exige uma rota" in itens[2]["motivo"]
+    assert r.get_json()["items"][0]["resultado"] == "CRIADO"
+    convite = _db.session.get(Convite, r.get_json()["items"][0]["id"])
+    assert convite.ponto_id is None
 
 
-def test_validar_pin_devolve_ponto_id_e_apelido(gestor, client, ponto, rota, rota_ponto, _db):
-    _, token, pin = _convite_enviado(_db, gestor, ponto_id=str(ponto.id), rota_id=str(rota.id))
+def test_validar_pin_nao_devolve_ponto_e_lista_campos_de_endereco(gestor, client, rota, _db):
+    _, token, pin = _convite_enviado(_db, gestor, rota_id=str(rota.id))
     dados = client.post(f"/v1/convites/aceite/{token}/validar", json={"pin": pin}).get_json()
-    assert dados["ponto_id"] == str(ponto.id)
-    assert dados["ponto_apelido"] == ponto.apelido
+    assert "ponto_id" not in dados and "ponto_apelido" not in dados
+    assert dados["rota_id"] == str(rota.id) and dados["rota_nome"] == rota.nome
+    assert dados["endereco_campos"]["obrigatorios"] == [
+        "logradouro",
+        "numero",
+        "bairro",
+        "cidade",
+        "estado",
+    ]
 
 
-def test_aceite_ignora_ponto_que_saiu_da_rota(gestor, client, ponto, rota, rota_ponto, _db):
-    _, token, pin = _convite_enviado(_db, gestor, ponto_id=str(ponto.id), rota_id=str(rota.id))
-    _db.session.delete(rota_ponto)
-    _db.session.commit()
-    r = _aceite(client, token, pin)
-    assert r.status_code == 201
-    inscricao = RotaAluno.query.filter_by(rota_id=rota.id, aluno_id=r.get_json()["id"]).one()
-    assert inscricao.ponto_embarque_padrao_id is None
+def test_aceite_sem_endereco_da_400_com_o_campo(gestor, client, _db):
+    _, token, pin = _convite_enviado(_db, gestor)
+    corpo = {
+        "pin": pin,
+        "senha": "SenhaForte123",
+        "cpf": CPF_A,
+        "data_nascimento": ADULTO,
+        "aceite_termos": True,
+    }
+    r = client.post(f"/v1/convites/aceite/{token}", json=corpo)
+    assert r.status_code == 400
+    assert "endereco" in r.get_data(as_text=True)
+
+
+def test_aceite_com_endereco_incompleto_da_400(gestor, client, _db):
+    _, token, pin = _convite_enviado(_db, gestor)
+    r = _aceite(client, token, pin, endereco={**ENDERECO, "estado": "Paraíba"})
+    assert r.status_code == 400
+    assert "estado" in r.get_data(as_text=True)
+    sem_cidade = {chave: valor for chave, valor in ENDERECO.items() if chave != "cidade"}
+    r = _aceite(client, token, pin, endereco=sem_cidade)
+    assert r.status_code == 400
+    assert "cidade" in r.get_data(as_text=True)
 
 
 def test_aceite_menor_segue_fluxo_do_responsavel(gestor, client, _db):
