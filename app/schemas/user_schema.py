@@ -1,6 +1,7 @@
 from marshmallow import fields
 
 from app.schemas.common import BaseSchema
+from app.schemas.endereco_schema import EnderecoMoradiaResponseSchema
 
 # ==========================================
 # Input Schemas (Validation)
@@ -72,6 +73,10 @@ class UserResponseSchema(BaseSchema):
     # Polymorphic fields (may not exist on all User subtypes)
     matricula = fields.String(dump_default=None)
     cnh = fields.String(dump_default=None)
+    # Só Aluno tem endereço de moradia; para os outros papéis sai null.
+    endereco = fields.Nested(
+        EnderecoMoradiaResponseSchema, attribute="endereco_moradia", dump_default=None
+    )
 
     def get_role(self, obj):
         return str(obj.role.value) if hasattr(obj.role, "value") else str(obj.role)

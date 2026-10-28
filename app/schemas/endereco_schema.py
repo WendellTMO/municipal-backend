@@ -35,3 +35,13 @@ class EnderecoResponseSchema(BaseSchema):
     cep = fields.String(dump_default=None)
     latitude = fields.Float(dump_default=None)
     longitude = fields.Float(dump_default=None)
+
+
+class EnderecoMoradiaResponseSchema(BaseSchema):
+    logradouro = fields.String(dump_default=None)
+    numero = fields.String(dump_default=None)
+    bairro = fields.String(dump_default=None)
+    cidade = fields.String(dump_default=None)
+    estado = fields.String(dump_default=None)
+    cep = fields.String(dump_default=None)
+    complemento = fields.String(dump_default=None)

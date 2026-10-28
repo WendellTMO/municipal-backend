@@ -95,6 +95,15 @@ class Aluno(User):
 
     instituicao = db.relationship("Instituicao")
     ponto_casa = db.relationship("Ponto")
+    # Endereço de moradia (Endereco.aluno_id). O banco apaga em cascata junto com a conta.
+    endereco_moradia = db.relationship(
+        "Endereco",
+        foreign_keys="Endereco.aluno_id",
+        uselist=False,
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     __mapper_args__ = {
         "polymorphic_identity": UserRole.ALUNO,

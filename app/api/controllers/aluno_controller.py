@@ -43,6 +43,14 @@ class AlunoSignupResource(Resource):
 
 @api.route("/me")
 class AlunoMeResource(Resource):
+    @api.doc("aluno_get_profile")
+    @api.response(200, "Success", models["aluno_response"])
+    @jwt_required()
+    def get(self) -> tuple[dict[str, Any], int]:
+        """Aluno lê seu próprio perfil (inclui o endereço de moradia)"""
+        aluno = aluno_service.get_me(get_jwt_identity())
+        return aluno_response_schema.dump(aluno), 200
+
     @api.doc("aluno_profile")
     @api.expect(models["me_update_request"])
     @api.response(200, "Success", models["aluno_response"])

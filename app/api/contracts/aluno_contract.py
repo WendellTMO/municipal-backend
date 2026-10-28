@@ -19,6 +19,19 @@ def register_models(api):
         },
     )
 
+    endereco_moradia = api.model(
+        "EnderecoMoradia",
+        {
+            "logradouro": fields.String(required=True, description="Logradouro"),
+            "numero": fields.String(required=True, description="Número"),
+            "bairro": fields.String(required=True, description="Bairro"),
+            "cidade": fields.String(required=True, description="Cidade"),
+            "estado": fields.String(required=True, description="Estado (UF)"),
+            "cep": fields.String(description="CEP"),
+            "complemento": fields.String(description="Complemento"),
+        },
+    )
+
     aluno_provision_account_request = api.model(
         "AlunoProvisionAccountRequest",
         {
@@ -61,6 +74,7 @@ def register_models(api):
             "nome_responsavel": fields.String(required=False, description="Nome do responsável"),
             "cpf_responsavel": fields.String(required=False, description="CPF do responsável"),
             "endereco_casa": fields.Nested(endereco_input, required=False),
+            "endereco": fields.Nested(endereco_moradia, required=False),
         },
     )
 
@@ -86,6 +100,9 @@ def register_models(api):
             "cpf_responsavel": fields.String(description="CPF do responsável"),
             "guardian_consented_at": fields.DateTime(
                 description="Data/hora do consentimento do responsável"
+            ),
+            "endereco": fields.Nested(
+                endereco_moradia, allow_null=True, description="Endereço de moradia ou null"
             ),
         },
     )
