@@ -6,6 +6,19 @@ from flask_restx import fields
 def register_models(api):
     """Register user models with the API namespace."""
 
+    endereco_moradia = api.model(
+        "UserEnderecoMoradia",
+        {
+            "logradouro": fields.String(),
+            "numero": fields.String(),
+            "bairro": fields.String(),
+            "cidade": fields.String(),
+            "estado": fields.String(description="UF"),
+            "cep": fields.String(),
+            "complemento": fields.String(),
+        },
+    )
+
     user_response = api.model(
         "UserResponse",
         {
@@ -22,6 +35,9 @@ def register_models(api):
             "municipio_uf": fields.String(description="UF do município"),
             "matricula": fields.String(description="Matrícula (aluno)"),
             "cnh": fields.String(description="CNH (motorista)"),
+            "endereco": fields.Nested(
+                endereco_moradia, allow_null=True, description="Endereço de moradia (aluno) ou null"
+            ),
         },
     )
 

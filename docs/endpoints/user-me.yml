@@ -36,6 +36,22 @@ responses:
         role:
           type: string
           example: gestor
+        endereco:
+          type: object
+          nullable: true
+          description: |
+            Endereço de moradia (tabela endereco, coluna aluno_id). Só alunos têm;
+            para os demais papéis, e para aluno sem endereço salvo, vem null.
+            Também sai em GET /v1/users/{id} e nas respostas de /v1/alunos.
+            Quem pode ler: o próprio usuário e gestor da mesma prefeitura.
+          properties:
+            logradouro: {type: string, example: Rua das Flores}
+            numero: {type: string, example: "120"}
+            bairro: {type: string, example: Centro}
+            cidade: {type: string, example: Campina Grande}
+            estado: {type: string, example: PB}
+            cep: {type: string, example: "58400000"}
+            complemento: {type: string, example: Apto 2}
   401:
     description: Unauthorized. Missing or invalid JWT token.
     schema:

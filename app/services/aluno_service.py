@@ -254,6 +254,20 @@ def gravar_endereco_de_moradia(aluno: Aluno, dados: dict[str, Any]) -> None:
     db.session.add(Endereco(aluno_id=aluno.id, **campos))
 
 
+def _atualizar_endereco_moradia(aluno: Aluno, dados: dict[str, Any]) -> None:
+    """Atualiza o endereço de moradia do aluno (Endereco.aluno_id), criando se não existe."""
+    existente = Endereco.query.filter_by(aluno_id=aluno.id).first()
+    if existente is None:
+        gravar_endereco_de_moradia(aluno, dados)
+        return
+
+    campos = _campos_de_endereco(dados)
+    campos["estado"] = dados["estado"].upper()
+    campos["complemento"] = dados.get("complemento")
+    for coluna, valor in campos.items():
+        setattr(existente, coluna, valor)
+
+
 def _atualizar_endereco_casa(aluno: Aluno, data: dict[str, Any]) -> None:
     """Atualiza o ponto de casa do aluno, criando-o quando ainda não existe."""
     dados_endereco = data["endereco_casa"]
@@ -327,6 +341,17 @@ def _finalizar_cadastro_se_completo(aluno: Aluno, data: dict[str, Any], user_id:
     )
 
 
+def get_me(user_id: str) -> Aluno:
+    """Perfil do próprio aluno.
+
+    Raises: NotFoundError
+    """
+    aluno = db.session.get(Aluno, user_id)
+    if not aluno:
+        raise NotFoundError("Aluno não encontrado")
+    return aluno
+
+
 def update_me(user_id: str, data: dict[str, Any]) -> Aluno:
     """
     Atualiza perfil do aluno.
@@ -343,8 +368,12 @@ def update_me(user_id: str, data: dict[str, Any]) -> Aluno:
             if field in data:
                 setattr(aluno, field, data[field])
 
-        if "endereco_casa" in data:
+        # O schema entrega None quando o campo não vem no payload: nada a mudar.
+        if data.get("endereco_casa"):
             _atualizar_endereco_casa(aluno, data)
+
+        if data.get("endereco"):
+            _atualizar_endereco_moradia(aluno, data["endereco"])
 
         _finalizar_cadastro_se_completo(aluno, data, user_id)
 

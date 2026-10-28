@@ -1,7 +1,11 @@
 from marshmallow import fields, validate
 
 from app.schemas.common import BaseSchema
-from app.schemas.endereco_schema import EnderecoInputSchema
+from app.schemas.endereco_schema import (
+    EnderecoInputSchema,
+    EnderecoMoradiaInputSchema,
+    EnderecoMoradiaResponseSchema,
+)
 from app.schemas.validators import (
     validate_cpf,
     validate_optional_cpf,
@@ -48,20 +52,21 @@ class AlunoSelfSignupRequestSchema(BaseSchema):
 
 
 class AlunoMeUpdateRequestSchema(BaseSchema):
-    """Aluno updates their profile (partial update)."""
+    """Aluno updates their profile (partial update).
 
-    nome = fields.String(load_default=None, allow_none=True, validate=validate_optional_string)
-    telefone = fields.String(load_default=None, allow_none=True, validate=validate_optional_phone)
+    Sem load_default: campo ausente não entra em `data` e o serviço não o toca.
+    """
 
-    matricula = fields.String(load_default=None, allow_none=True, validate=validate_optional_string)
-    nome_responsavel = fields.String(
-        load_default=None, allow_none=True, validate=validate_optional_string
-    )
-    cpf_responsavel = fields.String(
-        load_default=None, allow_none=True, validate=validate_optional_cpf
-    )
+    nome = fields.String(allow_none=True, validate=validate_optional_string)
+    telefone = fields.String(allow_none=True, validate=validate_optional_phone)
 
-    endereco_casa = fields.Nested(EnderecoInputSchema, load_default=None, allow_none=True)
+    matricula = fields.String(allow_none=True, validate=validate_optional_string)
+    nome_responsavel = fields.String(allow_none=True, validate=validate_optional_string)
+    cpf_responsavel = fields.String(allow_none=True, validate=validate_optional_cpf)
+
+    endereco_casa = fields.Nested(EnderecoInputSchema, allow_none=True)
+    # Endereço de moradia (Endereco.aluno_id), o mesmo formato que o GET devolve.
+    endereco = fields.Nested(EnderecoMoradiaInputSchema, allow_none=True)
 
 
 class AlunoGuardianConsentPublicSchema(BaseSchema):
@@ -93,6 +98,10 @@ class AlunoResponseSchema(BaseSchema):
     nome_responsavel = fields.String(dump_default=None)
     cpf_responsavel = fields.String(dump_default=None)
     guardian_consented_at = fields.DateTime(dump_default=None)
+
+    endereco = fields.Nested(
+        EnderecoMoradiaResponseSchema, attribute="endereco_moradia", dump_default=None
+    )
 
 
 class AlunoListResponseSchema(BaseSchema):

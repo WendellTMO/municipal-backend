@@ -1,0 +1,44 @@
+---
+tags:
+  - Alunos
+summary: Atualizar perfil do aluno
+description: |
+  PUT /v1/alunos/me. Atualização parcial: campo ausente ou null não muda nada.
+  Sem `endereco` no payload o endereço de moradia fica como está.
+  Com `endereco`, atualiza o registro existente (endereco.aluno_id) ou cria se não houver.
+  GET /v1/alunos/me devolve o mesmo AlunoResponse, com `endereco` (objeto ou null).
+  Campo ausente no PUT não é gravado como null (antes zerava nome e quebrava com 409).
+  `endereco_casa` (com latitude/longitude) segue aceito para clientes antigos.
+  A resposta traz o campo `endereco` (objeto ou null) com o estado final.
+operationId: updateAlunoMe
+security:
+  - BearerAuth: []
+parameters:
+  - in: body
+    name: body
+    schema:
+      type: object
+      properties:
+        nome: {type: string}
+        telefone: {type: string}
+        matricula: {type: string}
+        nome_responsavel: {type: string}
+        cpf_responsavel: {type: string}
+        endereco:
+          type: object
+          required: [logradouro, numero, bairro, cidade, estado]
+          properties:
+            logradouro: {type: string}
+            numero: {type: string}
+            bairro: {type: string}
+            cidade: {type: string}
+            estado: {type: string, description: UF com 2 letras}
+            cep: {type: string}
+            complemento: {type: string}
+responses:
+  200:
+    description: Perfil atualizado. Mesmo formato de AlunoResponse, com `endereco`.
+  400:
+    description: Payload inválido.
+  404:
+    description: Aluno não encontrado.
