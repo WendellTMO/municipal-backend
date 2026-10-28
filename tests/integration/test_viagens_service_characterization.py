@@ -271,13 +271,9 @@ def test_confirmar_presenca_confirma_e_grava_ponto_de_embarque(
     assert str(registro.ponto_embarque_id) == str(ponto.id)
 
 
-def test_confirmar_presenca_volta_infere_ponto_casa_como_destino(
-    _db, aluno, prefeitura, rota, rota_aluno, rota_ponto, ponto
+def test_confirmar_presenca_volta_desembarca_no_ponto_de_embarque(
+    _db, aluno, rota, rota_aluno, rota_ponto, ponto
 ):
-    casa = _ponto(_db, prefeitura.id, -23.1, -46.1, "Casa")
-    aluno.user.ponto_casa_id = casa.id
-    _db.session.commit()
-
     horario = _horario_operando_em(
         _db, rota, date.today() + timedelta(days=5), sentido=SentidoViagem.VOLTA
     )
@@ -289,7 +285,60 @@ def test_confirmar_presenca_volta_infere_ponto_casa_como_destino(
         {"confirmacao": True, "ponto_embarque_id": str(ponto.id)},
     )
 
-    assert registro.ponto_destino_id == casa.id
+    assert registro.ponto_destino_id == ponto.id
+
+
+def test_confirmar_presenca_sem_ponto_usa_o_padrao_da_inscricao(
+    _db, aluno, rota_aluno, rota_ponto, ponto, viagem_futura_agendada_com_motorista
+):
+    rota_aluno.ponto_embarque_padrao_id = ponto.id
+    _db.session.commit()
+
+    registro = confirmar_presenca_aluno(
+        str(aluno.user.id),
+        str(viagem_futura_agendada_com_motorista.id),
+        {"confirmacao": True},
+    )
+
+    assert registro.confirmacao is True
+    assert registro.ponto_embarque_id == ponto.id
+
+
+def test_confirmar_presenca_sem_ponto_e_sem_padrao_da_400(
+    _db, aluno, rota_aluno, rota_ponto, viagem_futura_agendada_com_motorista
+):
+    with pytest.raises(ValidationError) as exc:
+        confirmar_presenca_aluno(
+            str(aluno.user.id),
+            str(viagem_futura_agendada_com_motorista.id),
+            {"confirmacao": True},
+        )
+
+    assert "ponto" in exc.value.message
+
+
+def test_confirmar_presenca_ponto_informado_vence_o_padrao(
+    _db,
+    aluno,
+    prefeitura,
+    rota,
+    rota_aluno,
+    rota_ponto,
+    ponto,
+    viagem_futura_agendada_com_motorista,
+):
+    outro = _ponto(_db, prefeitura.id, -23.2, -46.2, "Outro")
+    _db.session.add(RotaPonto(rota_id=rota.id, ponto_id=outro.id, ordem=2))
+    rota_aluno.ponto_embarque_padrao_id = ponto.id
+    _db.session.commit()
+
+    registro = confirmar_presenca_aluno(
+        str(aluno.user.id),
+        str(viagem_futura_agendada_com_motorista.id),
+        {"confirmacao": True, "ponto_embarque_id": str(outro.id)},
+    )
+
+    assert registro.ponto_embarque_id == outro.id
 
 
 def test_confirmar_presenca_ida_sem_instituicao_deixa_destino_nulo(

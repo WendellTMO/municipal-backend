@@ -5,8 +5,9 @@ description: |
   Sem autenticação. Confere o PIN de novo (mesmo limite de 5 falhas). Maior
   de idade entra ACTIVE. Menor de 18 anos entra PENDING_SIGNUP e exige
   `nome_responsavel` e `email_responsavel`; o responsável recebe o e-mail de
-  consentimento do fluxo existente. O ponto do convite vira `ponto_casa_id` e
-  a rota do convite vira inscrição. CPF ou e-mail já cadastrados respondem 409.
+  consentimento do fluxo existente. A rota do convite vira inscrição e o ponto
+  do convite vira o ponto de embarque padrão do aluno nessa rota
+  (`rota_aluno.ponto_embarque_padrao_id`). CPF ou e-mail já cadastrados respondem 409.
 operationId: aceitarConvite
 parameters:
   - in: path

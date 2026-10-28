@@ -2,7 +2,10 @@ import pytest
 
 from scripts import convidar_csv
 
-PONTOS = [{"id": "p1", "apelido": "Ponto da Praça"}, {"id": "p2", "apelido": "Ponto Central"}]
+PONTOS_POR_ROTA = {
+    "r1": [{"id": "p1", "apelido": "Ponto da Praça"}, {"id": "p2", "apelido": "Ponto Central"}],
+    "r2": [{"id": "p3", "apelido": "Outro Ponto"}],
+}
 INSTITUICOES = [{"id": "i1", "nome": "Escola Exemplo"}]
 ROTAS = [{"id": "r1", "nome": "Rota Exemplo"}, {"id": "r2", "nome": "Rota Exemplo"}]
 
@@ -27,36 +30,48 @@ def test_exemplo_do_repositorio_e_valido():
     assert len(linhas) == 3
 
 
-def test_montar_itens_resolve_nome_e_id():
+def test_montar_itens_resolve_ponto_entre_os_pontos_da_rota():
     linhas = [
         {
             "nome": "Ana",
             "email": "a@exemplo.test",
             "ponto": "ponto da praça",
             "instituicao": "Escola Exemplo",
+            "rota": "r1",
         },
-        {"nome": "Bia", "email": "b@exemplo.test", "ponto": "p2", "telefone": "83999990000"},
+        {"nome": "Bia", "email": "b@exemplo.test", "ponto": "p2", "rota": "r1"},
     ]
-    resultado = convidar_csv.montar_itens(linhas, PONTOS, INSTITUICOES, ROTAS)
+    resultado = convidar_csv.montar_itens(linhas, PONTOS_POR_ROTA, INSTITUICOES, ROTAS)
     assert resultado[0] == (
         2,
-        {"nome": "Ana", "email": "a@exemplo.test", "ponto_id": "p1", "instituicao_id": "i1"},
+        {
+            "nome": "Ana",
+            "email": "a@exemplo.test",
+            "ponto_id": "p1",
+            "instituicao_id": "i1",
+            "rota_id": "r1",
+        },
         "",
     )
-    assert resultado[1][1] == {
-        "nome": "Bia",
-        "email": "b@exemplo.test",
-        "telefone": "83999990000",
-        "ponto_id": "p2",
-    }
+    assert resultado[1][1]["ponto_id"] == "p2"
+
+
+def test_montar_itens_ponto_sem_rota_ou_fora_da_rota_e_invalido():
+    linhas = [
+        {"nome": "Ana", "email": "a@exemplo.test", "ponto": "Ponto da Praça"},
+        {"nome": "Bia", "email": "b@exemplo.test", "ponto": "Ponto da Praça", "rota": "r2"},
+    ]
+    resultado = convidar_csv.montar_itens(linhas, PONTOS_POR_ROTA, INSTITUICOES, ROTAS)
+    assert resultado[0][1] is None and "exige a coluna rota" in resultado[0][2]
+    assert resultado[1][1] is None and "não encontrado" in resultado[1][2]
 
 
 def test_montar_itens_aponta_nao_encontrado_e_ambiguo():
     linhas = [
-        {"nome": "Ana", "email": "a@exemplo.test", "ponto": "Inexistente"},
+        {"nome": "Ana", "email": "a@exemplo.test", "ponto": "Inexistente", "rota": "r1"},
         {"nome": "Bia", "email": "b@exemplo.test", "rota": "Rota Exemplo"},
     ]
-    resultado = convidar_csv.montar_itens(linhas, PONTOS, INSTITUICOES, ROTAS)
+    resultado = convidar_csv.montar_itens(linhas, PONTOS_POR_ROTA, INSTITUICOES, ROTAS)
     assert resultado[0][1] is None and "não encontrado" in resultado[0][2]
     assert resultado[1][1] is None and "mais de um" in resultado[1][2]
 

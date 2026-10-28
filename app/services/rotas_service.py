@@ -174,6 +174,43 @@ def gerenciar_inscricao_aluno(user_id: str, rota_id: str, data: dict[str, Any]) 
     return {"message": "Inscrição removida com sucesso"}
 
 
+def _inscricao_do_aluno(user_id: str, rota_id: str) -> RotaAluno:
+    """Inscrição do aluno na rota. Quem não é aluno inscrito recebe 403."""
+    user = db.session.get(User, validate_uuid(user_id, "User ID"))
+    if not user or user.role != UserRole.ALUNO:
+        raise ForbiddenError("Apenas alunos podem usar este recurso")
+    inscricao = db.session.get(RotaAluno, (validate_uuid(rota_id, "Rota ID"), user.id))
+    if inscricao is None:
+        raise ForbiddenError("Você não está inscrito nesta rota")
+    return inscricao
+
+
+def _ponto_padrao_resposta(inscricao: RotaAluno) -> dict[str, Any]:
+    ponto = inscricao.ponto_embarque_padrao
+    return {
+        "rota_id": str(inscricao.rota_id),
+        "ponto_id": str(ponto.id) if ponto else None,
+        "ponto_apelido": ponto.apelido if ponto else None,
+    }
+
+
+def get_meu_ponto_embarque(user_id: str, rota_id: str) -> dict[str, Any]:
+    return _ponto_padrao_resposta(_inscricao_do_aluno(user_id, rota_id))
+
+
+def set_meu_ponto_embarque(user_id: str, rota_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    """O aluno escolhe, entre os pontos da rota, onde costuma embarcar."""
+    inscricao = _inscricao_do_aluno(user_id, rota_id)
+    ponto_id = data["ponto_id"]
+    na_rota = RotaPonto.query.filter_by(rota_id=inscricao.rota_id, ponto_id=ponto_id).first()
+    if na_rota is None:
+        raise ValidationError("O ponto não pertence a esta rota")
+
+    with transactional():
+        inscricao.ponto_embarque_padrao_id = ponto_id
+    return _ponto_padrao_resposta(inscricao)
+
+
 def create_rota(gestor_id: str, data: dict[str, Any]) -> Rota:
     """
     Create a new route with optional points and schedules.

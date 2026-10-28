@@ -3,9 +3,14 @@ tags:
   - Aluno
 summary: Confirmar ou Cancelar Presença em Viagem
 description: |
-  Permite que o aluno confirme ou cancele sua presença em uma viagem específica.  
-  Apenas usuários com o papel **aluno** podem acessar este endpoint.  
+  Permite que o aluno confirme ou cancele sua presença em uma viagem específica.
+  Apenas usuários com o papel **aluno** podem acessar este endpoint.
   Requer um **JWT token** válido no cabeçalho `Authorization`.
+  Ao confirmar, o corpo traz `confirmacao` e, opcionalmente, `ponto_embarque_id`
+  (ponto da rota). Sem ele vale o ponto de embarque padrão do aluno na rota
+  (`PUT /v1/rotas/{id}/meu-ponto-embarque`); sem padrão, a resposta é 400.
+  O destino na ida é o ponto da instituição do aluno; na volta é o próprio
+  ponto de embarque.
 operationId: alterarPresencaViagemAluno
 security:
   - BearerAuth: []

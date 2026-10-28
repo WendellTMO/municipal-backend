@@ -65,6 +65,12 @@ class RotaInscricaoRequestSchema(BaseSchema):
     acao = fields.String(required=True, validate=validate.OneOf(["inscrever", "desinscrever"]))
 
 
+class MeuPontoEmbarqueRequestSchema(BaseSchema):
+    """PUT /rotas/<id>/meu-ponto-embarque"""
+
+    ponto_id = fields.UUID(required=True)
+
+
 # ==========================================
 # Response Schemas (Serialization)
 # ==========================================

@@ -4,8 +4,9 @@ Uso:
     BUSKA_API_URL=http://localhost:5000 BUSKA_EMAIL=gestor@exemplo.test \\
     BUSKA_SENHA=... uv run python scripts/convidar_csv.py alunos.csv [--dry-run]
 
-Colunas do CSV: nome, email (obrigatórias); telefone, ponto (apelido ou id),
-instituicao (nome), rota (nome) (opcionais). A senha vem só do ambiente.
+Colunas do CSV: nome, email (obrigatórias); telefone, ponto (apelido ou id de um
+ponto DA ROTA da linha, exige a coluna rota), instituicao (nome), rota (nome)
+(opcionais). A senha vem só do ambiente.
 """
 
 import argparse
@@ -62,7 +63,7 @@ def _achar_id(texto: str, candidatos: list[dict[str, Any]], campo_nome: str) -> 
 
 def montar_itens(
     linhas: list[dict[str, str]],
-    pontos: list[dict[str, Any]],
+    pontos_por_rota: dict[str, list[dict[str, Any]]],
     instituicoes: list[dict[str, Any]],
     rotas: list[dict[str, Any]],
 ) -> list[tuple[int, dict[str, str] | None, str]]:
@@ -73,12 +74,15 @@ def montar_itens(
         if linha.get("telefone"):
             item["telefone"] = linha["telefone"]
         try:
-            if linha.get("ponto"):
-                item["ponto_id"] = _achar_id(linha["ponto"], pontos, "apelido")
+            if linha.get("ponto") and not linha.get("rota"):
+                raise ValueError("ponto exige a coluna rota preenchida")
             if linha.get("instituicao"):
                 item["instituicao_id"] = _achar_id(linha["instituicao"], instituicoes, "nome")
             if linha.get("rota"):
                 item["rota_id"] = _achar_id(linha["rota"], rotas, "nome")
+            if linha.get("ponto"):
+                pontos_da_rota = pontos_por_rota.get(item["rota_id"], [])
+                item["ponto_id"] = _achar_id(linha["ponto"], pontos_da_rota, "apelido")
         except ValueError as erro:
             saida.append((posicao, None, str(erro)))
             continue
@@ -139,13 +143,24 @@ def main(argv: list[str] | None = None) -> int:
 
     linhas = ler_csv(args.csv)
     cabecalhos = fazer_login(base, email, senha)
-    pontos = listar(base, cabecalhos, "/v1/pontos/")
     instituicoes = listar(base, cabecalhos, "/v1/instituicoes/")
     rotas = listar(base, cabecalhos, "/v1/rotas/")
 
+    # Pontos de cada rota citada com ponto no CSV, uma chamada por rota.
+    pontos_por_rota: dict[str, list[dict[str, Any]]] = {}
+    for linha in linhas:
+        if not linha.get("ponto") or not linha.get("rota"):
+            continue
+        try:
+            rota_id = _achar_id(linha["rota"], rotas, "nome")
+        except ValueError:
+            continue  # montar_itens reporta o erro da rota
+        if rota_id not in pontos_por_rota:
+            pontos_por_rota[rota_id] = listar(base, cabecalhos, f"/v1/rotas/{rota_id}/pontos")
+
     problemas = 0
     validos: list[dict[str, str]] = []
-    for numero, item, erro in montar_itens(linhas, pontos, instituicoes, rotas):
+    for numero, item, erro in montar_itens(linhas, pontos_por_rota, instituicoes, rotas):
         if item is None:
             problemas += 1
             print(f"linha {numero}: INVALIDO ({erro})")

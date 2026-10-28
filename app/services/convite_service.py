@@ -29,7 +29,7 @@ from app.models.convite import (
 )
 from app.models.enum import UserRole, UserStatus
 from app.models.geo import Instituicao, Ponto
-from app.models.rota import Rota, RotaAluno
+from app.models.rota import Rota, RotaAluno, RotaPonto
 from app.models.user import Aluno, User
 from app.schemas.validators import validate_phone
 from app.services import aluno_service
@@ -224,6 +224,15 @@ def criar_convites(gestor_id: str, itens: list[dict[str, Any]]) -> list[dict[str
         "rota_id": _ids_validos(Rota, itens, "rota_id", prefeitura_id),
     }
 
+    # Pares (rota, ponto) que existem nas rotas citadas no lote, numa query só.
+    pares_rota_ponto: set[tuple[str, str]] = set()
+    if validos["rota_id"]:
+        consulta_pares = db.session.query(RotaPonto.rota_id, RotaPonto.ponto_id).filter(
+            RotaPonto.rota_id.in_(list(validos["rota_id"]))
+        )
+        for rota_id_par, ponto_id_par in consulta_pares.all():
+            pares_rota_ponto.add((str(rota_id_par), str(ponto_id_par)))
+
     resultados: list[dict[str, Any]] = []
     gravados: dict[str, Convite] = {}
     with transactional():
@@ -242,6 +251,15 @@ def criar_convites(gestor_id: str, itens: list[dict[str, Any]]) -> list[dict[str
                 continue
 
             email = dados["email"]
+            if dados["ponto_id"] and not dados["rota_id"]:
+                motivo = "Ponto de embarque exige uma rota"
+                resultados.append(_linha(posicao, email, "INVALIDO", motivo))
+                continue
+            if dados["ponto_id"] and (dados["rota_id"], dados["ponto_id"]) not in pares_rota_ponto:
+                motivo = "O ponto de embarque não pertence à rota"
+                resultados.append(_linha(posicao, email, "INVALIDO", motivo))
+                continue
+
             if email in emails_com_conta:
                 resultados.append(_linha(posicao, email, "PULADO", "E-mail já possui conta"))
                 continue
@@ -430,7 +448,6 @@ def aceitar_convite(token: str, dados: dict[str, Any]) -> Aluno:
             role=UserRole.ALUNO,
             data_nascimento=nascimento,
             instituicao_id=convite.instituicao_id,
-            ponto_casa_id=convite.ponto_id,
         )
         if aluno.is_minor:
             if not dados.get("nome_responsavel"):
@@ -449,7 +466,23 @@ def aceitar_convite(token: str, dados: dict[str, Any]) -> Aluno:
         db.session.flush()
 
         if convite.rota_id:
-            db.session.add(RotaAluno(rota_id=convite.rota_id, aluno_id=aluno.id))
+            ponto_padrao_id = None
+            if convite.ponto_id:
+                na_rota = RotaPonto.query.filter_by(
+                    rota_id=convite.rota_id, ponto_id=convite.ponto_id
+                ).first()
+                if na_rota is None:
+                    # A rota mudou depois do convite: o aluno entra sem ponto padrão.
+                    logger.warning("Ponto do convite %s não está mais na rota", convite.id)
+                else:
+                    ponto_padrao_id = convite.ponto_id
+            db.session.add(
+                RotaAluno(
+                    rota_id=convite.rota_id,
+                    aluno_id=aluno.id,
+                    ponto_embarque_padrao_id=ponto_padrao_id,
+                )
+            )
 
         convite.status = ACEITO
         convite.aceito_em = agora

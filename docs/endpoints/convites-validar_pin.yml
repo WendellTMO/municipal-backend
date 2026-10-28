@@ -29,7 +29,7 @@ responses:
         email: "ana@exemplo.test"
         telefone: null
         ponto_id: "9d0a2e57-8b4c-4c3b-a3f1-0e5d2b7a6c10"
-        ponto_apelido: "Casa da Ana"
+        ponto_apelido: "Praça Central"
         instituicao_id: null
         instituicao_nome: null
         rota_id: "3b7e1c44-6a2d-4f08-b1e9-5c8d9a0f7e22"
