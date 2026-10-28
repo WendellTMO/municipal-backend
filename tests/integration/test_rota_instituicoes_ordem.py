@@ -52,7 +52,7 @@ def test_put_grava_e_get_devolve_na_ordem(_db, motorista, prefeitura, rota):
                 "tipo": "Escola Pública",
                 "ordem": posicao,
             }
-            for posicao, (inst_id, nome) in enumerate(zip(ids, ["C", "A", "B"]))
+            for posicao, (inst_id, nome) in enumerate(zip(ids, ["C", "A", "B"], strict=True))
         ],
         "total": 3,
     }
