@@ -983,7 +983,11 @@ def test_atualizar_localizacao_sem_pontos_grava_telemetria_e_avisa(
         {"latitude": -23.5, "longitude": -46.6},
     )
 
-    assert resultado == {"message": "Todos os pontos já foram visitados. Viagem quase concluída!"}
+    assert resultado == {
+        "message": "Todos os pontos já foram visitados. Viagem quase concluída!",
+        "observadores": False,
+        "intervalo_sugerido_segundos": 30,
+    }
     assert (
         TelemetriaViagem.query.filter_by(viagem_id=viagem_futura_iniciada_com_motorista.id).count()
         == 1
@@ -1283,3 +1287,43 @@ def test_gerar_viagens_periodo_engole_falha_e_devolve_zero(_db, gestor):
     ``except Exception`` registra em log e o total volta 0, sem propagar.
     """
     assert gerar_viagens_periodo(str(uuid.uuid4()), dias_futuros=3) == 0
+
+
+# ─── envio de localização sob demanda ───────────────────────────────────────
+
+
+def _post_gps(motorista, viagem):
+    return atualizar_localizacao(
+        str(motorista.user.id), str(viagem.id), {"latitude": -23.5, "longitude": -46.6}
+    )
+
+
+def test_localizacao_sob_demanda_ciclo_completo(
+    _db, motorista, aluno, viagem_futura_iniciada_com_motorista
+):
+    viagem = viagem_futura_iniciada_com_motorista
+    _confirmacao(_db, viagem, aluno.user.id, confirmacao=True)
+
+    sem_consulta = _post_gps(motorista, viagem)
+    assert sem_consulta["observadores"] is False
+    assert sem_consulta["intervalo_sugerido_segundos"] == 30
+
+    obter_localizacao_onibus(str(aluno.user.id), str(viagem.id))
+    com_consulta = _post_gps(motorista, viagem)
+    assert com_consulta["observadores"] is True
+    assert com_consulta["intervalo_sugerido_segundos"] == 5
+
+    viagem.localizacao_solicitada_em = datetime.now(UTC) - timedelta(seconds=46)
+    _db.session.commit()
+    expirada = _post_gps(motorista, viagem)
+    assert expirada["observadores"] is False
+    assert expirada["intervalo_sugerido_segundos"] == 30
+
+
+def test_consulta_do_motorista_nao_conta_como_observador(
+    _db, motorista, viagem_futura_iniciada_com_motorista
+):
+    viagem = viagem_futura_iniciada_com_motorista
+    obter_localizacao_onibus(str(motorista.user.id), str(viagem.id))
+
+    assert _post_gps(motorista, viagem)["observadores"] is False

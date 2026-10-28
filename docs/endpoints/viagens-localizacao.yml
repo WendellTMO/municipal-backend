@@ -1,0 +1,39 @@
+tags:
+  - Viagens
+summary: Localização do ônibus (envio sob demanda)
+description: |
+  **POST** `/v1/viagens/{id}/localizacao` (motorista): envia o GPS.
+  A resposta traz `observadores` e `intervalo_sugerido_segundos`, que dizem ao app
+  com que frequência enviar. `observadores` é true se alguém fez GET na localização
+  nos últimos 45 s (`viagem.localizacao_solicitada_em`). Intervalo sugerido: 5 s com
+  observador, 30 s sem.
+
+  **GET** `/v1/viagens/{id}/localizacao` (aluno confirmado ou motorista): devolve a
+  posição e, quando quem consulta é aluno, grava `localizacao_solicitada_em`.
+  A consulta do próprio motorista não conta como observador.
+security:
+  - BearerAuth: []
+parameters:
+  - in: path
+    name: id
+    required: true
+    type: string
+responses:
+  200:
+    description: |
+      POST: localização salva. GET: posição atual (latitude, longitude, atualizado_em).
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+        distancia_metros:
+          type: integer
+          description: Ausente quando todos os pontos já foram visitados.
+        observadores:
+          type: boolean
+          example: true
+        intervalo_sugerido_segundos:
+          type: integer
+          enum: [5, 30]
+          example: 5

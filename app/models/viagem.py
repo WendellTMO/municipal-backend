@@ -35,6 +35,7 @@ class Viagem(db.Model):
     motorista_lat = db.Column(db.Numeric(10, 8), nullable=True)
     motorista_lon = db.Column(db.Numeric(11, 8), nullable=True)
     motorista_gps_hora = db.Column(db.DateTime(timezone=True), nullable=True)
+    localizacao_solicitada_em = db.Column(db.DateTime(timezone=True), nullable=True)
     # it must change to a version 2
     aviso_24h_enviado = db.Column(db.Boolean, default=False, nullable=False)
     aviso_10min_enviado = db.Column(db.Boolean, default=False, nullable=False)

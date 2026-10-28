@@ -28,6 +28,11 @@ from app.utils.geo_utils import calcular_distancia_metros
 
 logger = logging.getLogger(__name__)
 
+# Envio de GPS sob demanda: o motorista só acelera quando alguém consultou há pouco.
+JANELA_OBSERVADOR_SEGUNDOS = 45
+INTERVALO_COM_OBSERVADOR = 5
+INTERVALO_SEM_OBSERVADOR = 30
+
 
 # As listagens de viagem são serializadas por acessores `fields.Method` do
 # `ViagemListResponseSchema`, que percorrem estas três relações por viagem. Sem
@@ -595,6 +600,20 @@ def cancelar_viagem(user_id: str, viagem_id: str) -> dict[str, Any]:
     return {"message": "Viagem cancelada com sucesso", "alunos_notificados": len(confirmados)}
 
 
+def _info_observadores(viagem: Viagem, agora: datetime) -> dict:
+    """Diz ao motorista se alguém consultou a posição dentro da janela."""
+    solicitada = viagem.localizacao_solicitada_em
+    observadores = False
+    if solicitada is not None:
+        idade = (agora - solicitada).total_seconds()
+        observadores = idade <= JANELA_OBSERVADOR_SEGUNDOS
+    if observadores:
+        intervalo = INTERVALO_COM_OBSERVADOR
+    else:
+        intervalo = INTERVALO_SEM_OBSERVADOR
+    return {"observadores": observadores, "intervalo_sugerido_segundos": intervalo}
+
+
 def atualizar_localizacao(user_id: str, viagem_id: str, data: dict) -> dict:
     """Atualiza o GPS do motorista, salva telemetria e engatilha o Auto-Checkin."""
     user = db.session.get(User, user_id)
@@ -609,6 +628,7 @@ def atualizar_localizacao(user_id: str, viagem_id: str, data: dict) -> dict:
         raise ValidationError(f"A viagem não está em andamento (Status: {viagem.status.name})")
 
     agora = datetime.now(UTC)
+    observadores = _info_observadores(viagem, agora)
 
     viagem.motorista_lat = data["latitude"]
     viagem.motorista_lon = data["longitude"]
@@ -627,7 +647,10 @@ def atualizar_localizacao(user_id: str, viagem_id: str, data: dict) -> dict:
     )
 
     if not proximos_pontos:
-        return {"message": "Todos os pontos já foram visitados. Viagem quase concluída!"}
+        return {
+            "message": "Todos os pontos já foram visitados. Viagem quase concluída!",
+            **observadores,
+        }
 
     proximo_ponto = proximos_pontos[0]
     ponto_geo = proximo_ponto.ponto
@@ -672,11 +695,13 @@ def atualizar_localizacao(user_id: str, viagem_id: str, data: dict) -> dict:
         return {
             "message": "Localização salva. Ponto próximo alcançado, notificações e auto-checkin engatilhados!",
             "distancia_metros": int(distancia_metros),
+            **observadores,
         }
 
     return {
         "message": "Localização atualizada silenciosamente com telemetria.",
         "distancia_metros": int(distancia_metros),
+        **observadores,
     }
 
 
@@ -711,6 +736,11 @@ def obter_localizacao_onibus(user_id: str, viagem_id: str) -> dict:
         raise ForbiddenError(
             "Apenas alunos confirmados ou o motorista podem consultar a localização do ônibus."
         )
+
+    # A consulta do próprio motorista não conta como observador.
+    if user.role != UserRole.MOTORISTA:
+        viagem.localizacao_solicitada_em = datetime.now(UTC)
+        db.session.commit()
 
     return {
         "latitude": float(viagem.motorista_lat) if viagem.motorista_lat is not None else None,
