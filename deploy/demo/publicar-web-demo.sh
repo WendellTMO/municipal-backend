@@ -27,3 +27,4 @@ fi
 rsync -rt "$COPIA/dist/" "$VM:~/web-new/"
 ssh "$VM" 'sudo rsync -rt --no-owner --no-group ~/web-new/ /var/www/buska-app/'
 echo "Web publicado em $API_URL"
+URL="$API_URL" "$(dirname "${BASH_SOURCE[0]}")/verificar-demo.sh"
