@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Confere o que está no ar na demo. Sai com erro se qualquer verificação falhar.
 # Roda no fim de publicar-web-demo.sh e de build-apk-demo.sh, e pode ser rodado à mão.
-# Só usa curl. Variáveis: URL, LOGIN_EMAIL, LOGIN_SENHA.
+# Só usa curl. Variáveis: URL, LOGIN_EMAIL, LOGIN_SENHA, CURL_RESOLVE (host:porta:ip, para rodar
+# na própria VM, que não resolve o domínio público).
 set -uo pipefail
 
 URL=${URL:-https://buska.lsd.ufcg.edu.br}
 LOGIN_EMAIL=${LOGIN_EMAIL:-aluno@buska.app}
 LOGIN_SENHA=${LOGIN_SENHA:-buska123}
 FALHAS=0
+
+curl() { command curl ${CURL_RESOLVE:+--resolve "$CURL_RESOLVE"} "$@"; }
 
 ok() { echo "  ok    $1"; }
 falha() { echo "  FALHA $1"; FALHAS=$((FALHAS + 1)); }
