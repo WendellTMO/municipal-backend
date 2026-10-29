@@ -677,6 +677,17 @@ def _info_observadores(viagem: Viagem, agora: datetime) -> dict:
     return {"observadores": observadores, "intervalo_sugerido_segundos": intervalo}
 
 
+def _pedir_localizacao_ao_motorista(viagem: Viagem) -> None:
+    motorista = db.session.get(User, viagem.motorista_id) if viagem.motorista_id else None
+    if motorista is None:
+        return
+    NotificacaoService.enviar_push_so_dados(
+        motorista,
+        {"tipo": "demanda_localizacao", "viagem_id": str(viagem.id)},
+        collapse_key=f"demanda_localizacao_{viagem.id}",
+    )
+
+
 def atualizar_localizacao(user_id: str, viagem_id: str, data: dict) -> dict:
     """Atualiza o GPS do motorista, salva telemetria e engatilha o Auto-Checkin."""
     user = db.session.get(User, user_id)
@@ -802,8 +813,13 @@ def obter_localizacao_onibus(user_id: str, viagem_id: str) -> dict:
 
     # A consulta do próprio motorista não conta como observador.
     if user.role != UserRole.MOTORISTA:
-        viagem.localizacao_solicitada_em = datetime.now(UTC)
+        agora = datetime.now(UTC)
+        eram_observadores = _info_observadores(viagem, agora)["observadores"]
+        viagem.localizacao_solicitada_em = agora
         db.session.commit()
+        # Transição sem observador -> com observador: acorda o app do motorista.
+        if not eram_observadores:
+            _pedir_localizacao_ao_motorista(viagem)
 
     return {
         "latitude": float(viagem.motorista_lat) if viagem.motorista_lat is not None else None,

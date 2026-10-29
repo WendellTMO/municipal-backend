@@ -1327,3 +1327,106 @@ def test_consulta_do_motorista_nao_conta_como_observador(
     obter_localizacao_onibus(str(motorista.user.id), str(viagem.id))
 
     assert _post_gps(motorista, viagem)["observadores"] is False
+
+
+# ─── push de demanda de localização ─────────────────────────────────────────
+
+
+@pytest.fixture
+def fcm_enviados(monkeypatch):
+    enviados = []
+    monkeypatch.setattr(
+        "app.services.notificacao_service.messaging.send", lambda msg: enviados.append(msg)
+    )
+    return enviados
+
+
+def _viagem_com_token(_db, motorista, aluno, viagem):
+    motorista.user.fcm_token = "token-motorista"
+    _confirmacao(_db, viagem, aluno.user.id, confirmacao=True)
+    _db.session.commit()
+
+
+def test_push_demanda_dispara_na_transicao_com_payload_exato(
+    _db, motorista, aluno, viagem_futura_iniciada_com_motorista, fcm_enviados
+):
+    viagem = viagem_futura_iniciada_com_motorista
+    _viagem_com_token(_db, motorista, aluno, viagem)
+
+    obter_localizacao_onibus(str(aluno.user.id), str(viagem.id))
+
+    assert len(fcm_enviados) == 1
+    msg = fcm_enviados[0]
+    assert msg.token == "token-motorista"
+    assert msg.notification is None
+    assert msg.data == {"tipo": "demanda_localizacao", "viagem_id": str(viagem.id)}
+    assert msg.android.priority == "high"
+    assert msg.android.ttl == timedelta(seconds=30)
+    assert msg.android.collapse_key == f"demanda_localizacao_{viagem.id}"
+
+
+def test_push_demanda_nao_dispara_dentro_da_janela(
+    _db, motorista, aluno, viagem_futura_iniciada_com_motorista, fcm_enviados
+):
+    viagem = viagem_futura_iniciada_com_motorista
+    _viagem_com_token(_db, motorista, aluno, viagem)
+
+    obter_localizacao_onibus(str(aluno.user.id), str(viagem.id))
+    obter_localizacao_onibus(str(aluno.user.id), str(viagem.id))
+
+    assert len(fcm_enviados) == 1
+
+
+def test_push_demanda_dispara_de_novo_apos_a_janela(
+    _db, motorista, aluno, viagem_futura_iniciada_com_motorista, fcm_enviados
+):
+    viagem = viagem_futura_iniciada_com_motorista
+    _viagem_com_token(_db, motorista, aluno, viagem)
+    obter_localizacao_onibus(str(aluno.user.id), str(viagem.id))
+
+    viagem.localizacao_solicitada_em = datetime.now(UTC) - timedelta(seconds=46)
+    _db.session.commit()
+    obter_localizacao_onibus(str(aluno.user.id), str(viagem.id))
+
+    assert len(fcm_enviados) == 2
+
+
+def test_push_demanda_nao_dispara_para_consulta_do_motorista(
+    _db, motorista, aluno, viagem_futura_iniciada_com_motorista, fcm_enviados
+):
+    viagem = viagem_futura_iniciada_com_motorista
+    _viagem_com_token(_db, motorista, aluno, viagem)
+
+    obter_localizacao_onibus(str(motorista.user.id), str(viagem.id))
+
+    assert fcm_enviados == []
+
+
+def test_push_demanda_motorista_sem_token_nao_quebra(
+    _db, motorista, aluno, viagem_futura_iniciada_com_motorista, fcm_enviados
+):
+    viagem = viagem_futura_iniciada_com_motorista
+    _confirmacao(_db, viagem, aluno.user.id, confirmacao=True)
+    motorista.user.fcm_token = None
+    _db.session.commit()
+
+    obter_localizacao_onibus(str(aluno.user.id), str(viagem.id))
+
+    assert fcm_enviados == []
+
+
+@pytest.mark.parametrize("erro", [RuntimeError("fcm fora"), ValueError("sem app")])
+def test_push_demanda_falha_do_firebase_nao_derruba_o_get(
+    _db, motorista, aluno, viagem_futura_iniciada_com_motorista, monkeypatch, erro
+):
+    viagem = viagem_futura_iniciada_com_motorista
+    _viagem_com_token(_db, motorista, aluno, viagem)
+
+    def falha(msg):
+        raise erro
+
+    monkeypatch.setattr("app.services.notificacao_service.messaging.send", falha)
+
+    resultado = obter_localizacao_onibus(str(aluno.user.id), str(viagem.id))
+
+    assert "latitude" in resultado
