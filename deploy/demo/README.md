@@ -9,6 +9,12 @@ deploy/demo/build-apk-demo.sh                 # só gera ~/buska-demo.apk
 PUBLICAR=1 NOTAS="Mapa mais rápido|Correção no login" deploy/demo/build-apk-demo.sh
 ```
 
+No seu computador (o site web), sem usar o `.env` do seu clone:
+
+```bash
+deploy/demo/publicar-web-demo.sh
+```
+
 Variáveis (todas opcionais):
 
 | Variável | Padrão |
