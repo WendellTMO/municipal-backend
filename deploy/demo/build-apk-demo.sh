@@ -73,7 +73,7 @@ APKSIGNER=$(ls ~/.android/sdk/build-tools/*/apksigner | sort -V | tail -1)
 echo "Certificado do assinante:"
 "$APKSIGNER" verify --print-certs "$APK" | grep "SHA-256 digest" | head -1
 
-echo "APK gerado: $APK (versionCode $BUSKA_VERSION_CODE, versionName $VERSION_NAME-beta)"
+echo "APK gerado: $APK (versionCode $BUSKA_VERSION_CODE, versionName $VERSION_NAME)"
 
 if [ "$PUBLICAR" = "1" ]; then
     if [ -f "$WWW/app-version.json" ]; then
@@ -88,7 +88,7 @@ if [ "$PUBLICAR" = "1" ]; then
     SHA=$(sha256sum "$APK" | cut -d' ' -f1)
     JSON=$(mktemp)
     python3 "$QUI/gerar_app_version.py" --version-code "$BUSKA_VERSION_CODE" \
-        --version-name "$VERSION_NAME-beta" --api-url "$API_URL" --sha256 "$SHA" \
+        --version-name "$VERSION_NAME" --api-url "$API_URL" --sha256 "$SHA" \
         --notas "$NOTAS" --min-version-code "$MIN_VERSION_CODE" > "$JSON"
 
     # Ordem: anterior, novo APK, e o JSON por último, para nunca apontar para APK ausente.
