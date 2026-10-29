@@ -156,6 +156,17 @@ class NotificacaoService:
         return {"message": "Notificação marcada como lida."}
 
     @staticmethod
+    def excluir(user_id: str, notificacao_id: str) -> dict[str, str]:
+        notificacao = db.session.get(Notificacao, notificacao_id)
+        if not notificacao or str(notificacao.usuario_id) != str(user_id):
+            raise NotFoundError("Notificação não encontrada.")
+
+        with transactional():
+            db.session.delete(notificacao)
+
+        return {"message": "Notificação excluída."}
+
+    @staticmethod
     def notificar_alunos_viagem_iniciada(viagem_id: str) -> None:
         """Busca os alunos confirmados na viagem e dispara o aviso de partida."""
         # O `except` largo é deliberado: quem chama é `controlar_viagem`, e uma

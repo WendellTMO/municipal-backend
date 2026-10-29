@@ -418,6 +418,25 @@ def test_marcar_lida_de_outro_usuario_404_e_nao_403(_db, aluno, other_aluno):
     assert alheia.enviada is False
 
 
+def test_excluir_remove_a_notificacao(_db, aluno):
+    notificacao = _notificacao(_db, aluno.user.id)
+    notificacao_id = notificacao.id
+
+    resultado = NotificacaoService.excluir(str(aluno.user.id), str(notificacao_id))
+
+    assert resultado == {"message": "Notificação excluída."}
+    assert _db.session.get(Notificacao, notificacao_id) is None
+
+
+def test_excluir_de_outro_usuario_404_e_mantem_a_notificacao(_db, aluno, other_aluno):
+    alheia = _notificacao(_db, other_aluno.user.id)
+
+    with pytest.raises(NotFoundError):
+        NotificacaoService.excluir(str(aluno.user.id), str(alheia.id))
+
+    assert _db.session.get(Notificacao, alheia.id) is not None
+
+
 def test_marcar_lida_erro_no_commit_nao_vaza_texto_do_driver(_db, aluno, monkeypatch):
     """Corrigido: mesma troca do `notificar_por_gestor`."""
     notificacao = _notificacao(_db, aluno.user.id)
