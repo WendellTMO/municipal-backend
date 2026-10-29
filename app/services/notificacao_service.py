@@ -167,6 +167,13 @@ class NotificacaoService:
         return {"message": "Notificação excluída."}
 
     @staticmethod
+    def excluir_todas(user_id: str) -> dict[str, str]:
+        with transactional():
+            Notificacao.query.filter_by(usuario_id=user_id).delete()
+
+        return {"message": "Notificações excluídas."}
+
+    @staticmethod
     def notificar_alunos_viagem_iniciada(viagem_id: str) -> None:
         """Busca os alunos confirmados na viagem e dispara o aviso de partida."""
         # O `except` largo é deliberado: quem chama é `controlar_viagem`, e uma
