@@ -20,7 +20,7 @@ Variáveis (todas opcionais):
 | `PUBLICAR` | `0` |
 
 O versionCode é `minutos desde 1970` e chega ao gradle em `BUSKA_VERSION_CODE`.
-O versionName vem do `version` do `package.json` do front, com sufixo `-beta`.
+O versionName vem do `version` do `package.json` do front, sem alteração (ele já inclui o sufixo, por exemplo `1.0.4-beta`).
 Com `PUBLICAR=1` o script aborta se a assinatura não passar no `apksigner` ou se o
 versionCode não for maior que o de `app-version.json` já publicado.
 
