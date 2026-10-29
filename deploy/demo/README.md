@@ -17,6 +17,19 @@ deploy/demo/publicar-web-demo.sh
 
 `deploy/demo/verificar-demo.sh` confere o que está no ar (páginas, API, login, bundle sem localhost, hash do APK) e sai com erro se algo falhar. Os dois scripts acima já o rodam no fim.
 
+## Simular o ônibus (para mostrar a demo)
+
+Cria o horário de agora e a viagem de hoje, inicia como motorista e move o ônibus pelas ruas
+entre os pontos da rota. Quem estiver confirmado na rota vê o ônibus na tela de localização.
+
+```bash
+python3 deploy/demo/simular-viagem.py                      # 5 minutos, viagem segue em andamento
+python3 deploy/demo/simular-viagem.py --duracao 600 --finalizar
+```
+
+Opções: `--rota`, `--sentido`, `--duracao`, `--passo`, `--url`, `--gestor`, `--motorista`, `--senha`.
+Se já houver uma viagem em andamento na rota, ela é reaproveitada.
+
 Variáveis (todas opcionais):
 
 | Variável | Padrão |
