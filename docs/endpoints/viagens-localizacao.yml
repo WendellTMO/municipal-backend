@@ -11,6 +11,14 @@ description: |
   **GET** `/v1/viagens/{id}/localizacao` (aluno confirmado ou motorista): devolve a
   posição e, quando quem consulta é aluno, grava `localizacao_solicitada_em`.
   A consulta do próprio motorista não conta como observador.
+
+  **Push de demanda**: quando um aluno consulta e não havia observador ativo
+  (`localizacao_solicitada_em` nulo ou com mais de 45 s), o servidor envia ao motorista
+  uma mensagem FCM só de dados (sem `notification`, não aparece alerta), uma vez por
+  transição. O app deve enviar a posição na hora e passar a usar o intervalo de 5 s.
+  Payload `data`: `{"tipo": "demanda_localizacao", "viagem_id": "<uuid>"}`.
+  Android: `priority=high`, `ttl=30s`, `collapse_key=demanda_localizacao_<viagem_id>`.
+  Falha no envio, motorista sem `fcm_token` ou Firebase ausente não afetam o GET.
 security:
   - BearerAuth: []
 parameters:

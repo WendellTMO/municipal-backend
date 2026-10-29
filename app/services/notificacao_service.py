@@ -1,7 +1,7 @@
 """Notification service - management notifications for users."""
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from firebase_admin import messaging
@@ -51,6 +51,29 @@ class NotificacaoService:
                 )
 
         return nova
+
+    @staticmethod
+    def enviar_push_so_dados(usuario: User, dados: dict[str, str], collapse_key: str) -> None:
+        """Push FCM silencioso (sem `notification`), alta prioridade. Nunca levanta."""
+        if not getattr(usuario, "fcm_token", None):
+            logger.debug(f"Push de dados ignorado: {usuario.email} sem fcm_token.")
+            return
+        try:
+            mensagem_fcm = messaging.Message(
+                data=dados,
+                token=usuario.fcm_token,
+                android=messaging.AndroidConfig(
+                    priority="high",
+                    ttl=timedelta(seconds=30),
+                    collapse_key=collapse_key,
+                ),
+            )
+            messaging.send(mensagem_fcm)
+        except ValueError as e:
+            # firebase_admin levanta ValueError quando não há app inicializado.
+            logger.debug(f"Push de dados ignorado, Firebase não configurado: {e}")
+        except Exception as e:
+            logger.warning(f"Falha ao enviar push de dados para {usuario.email}: {e}")
 
     @staticmethod
     def notificar_por_gestor(user_id: str, dados: dict[str, Any]) -> dict[str, Any]:
