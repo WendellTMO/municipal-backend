@@ -481,15 +481,20 @@ def _montar_email(convite: Convite, link: str, pin: str, frontend_url: str) -> t
     texto = (
         f"Olá, {convite.nome}!\n\n"
         "Você foi convidado(a) para usar o BusKá, o app do transporte escolar.\n"
-        "Para concluir o seu cadastro, abra o link abaixo e informe o código de acesso.\n\n"
+        "Siga os passos abaixo.\n\n"
+        "1. Conclua seu cadastro\n"
+        "Abra o link e informe o código de acesso (PIN). O código é pessoal.\n"
         f"Link: {link}\n"
-        f"Código de acesso (PIN): {pin}\n\n"
+        f"Código de acesso (PIN): {pin}\n"
         f"O convite vale por {VALIDADE_DIAS} dias. "
         "Se você não esperava este e-mail, ignore esta mensagem.\n\n"
-        "Baixe o app\n"
+        "2. Baixe o app\n"
         f"Android: {url_apk}\n"
-        "Ao instalar, o Android pode pedir para permitir a instalação de fontes desconhecidas.\n"
-        f"No iPhone, use o BusKá pelo navegador: {url_web}"
+        "Ao instalar, o Android pode pedir para permitir a instalação de fontes desconhecidas.\n\n"
+        "3. Abra o app e entre\n"
+        "Entre com o e-mail e a senha que você criou no cadastro.\n\n"
+        "No iPhone, o app chega em breve. "
+        f"Por enquanto use o BusKá pelo navegador: {url_web}"
     )
     pagina = montar_email_html(
         titulo="Seu convite para o BusKá",
@@ -497,7 +502,7 @@ def _montar_email(convite: Convite, link: str, pin: str, frontend_url: str) -> t
         saudacao=f"Olá, {convite.nome}!",
         paragrafos=[
             "Você foi convidado(a) para usar o BusKá, o app do transporte escolar.",
-            "Para concluir o seu cadastro, toque no botão abaixo e informe o código de acesso.",
+            "Siga os passos abaixo para começar a usar.",
         ],
         botao_texto="Concluir meu cadastro",
         botao_url=link,
