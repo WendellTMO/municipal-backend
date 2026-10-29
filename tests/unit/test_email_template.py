@@ -3,7 +3,7 @@
 import smtplib
 
 from app.utils.email_sender import send_email
-from app.utils.email_template import montar_email_html
+from app.utils.email_template import montar_email_html, passo_numerado
 
 
 def _html(**extra):
@@ -93,16 +93,45 @@ def test_send_email_sem_logo_nao_anexa_imagem(app, monkeypatch):
     assert "image/png" not in bruto
 
 
-def test_template_bloco_app_so_aparece_quando_informado():
-    assert "Baixe o app" not in _html()
-    pagina = _html(links_app=("https://buska.test/buska.apk", "https://buska.test"))
+def test_template_sem_links_app_nao_tem_passos():
+    pagina = _html()
+    assert "Baixe o app" not in pagina
+    assert "Conclua seu cadastro" not in pagina
+
+
+def test_template_passos_na_ordem_com_links_e_numeros():
+    pagina = _html(
+        pin="483920",
+        links_app=("https://buska.test/buska.apk", "https://buska.test"),
+    )
+    posicoes = []
+    for titulo in ["Conclua seu cadastro", "Baixe o app", "Abra o app e entre"]:
+        assert pagina.count(titulo) == 1
+        posicoes.append(pagina.index(titulo))
+    assert posicoes == sorted(posicoes)
+    assert pagina.index("483920") < pagina.index("Baixe o app")
+    for numero in "123":
+        assert (
+            f"font-weight:700;color:#FFFFFF;font-family:Inter, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;\">{numero}</td>"
+            in pagina
+        )
+    assert pagina.count('bgcolor="#0347D0"') >= 5
     assert 'href="https://buska.test/buska.apk"' in pagina
     assert "Baixar o app para Android" in pagina
     assert "fontes desconhecidas" in pagina
-    assert "No iPhone, use o BusKá pelo navegador" in pagina
+    assert "Entre com o e-mail e a senha que você criou no cadastro." in pagina
+    assert pagina.index("Abra o app e entre") < pagina.index("No iPhone, o app chega em breve")
+    assert "Por enquanto use o BusKá pelo navegador" in pagina
     assert "—" not in pagina and "–" not in pagina
 
 
-def test_template_bloco_app_escapa_urls():
+def test_passo_numerado_escapa_titulo():
+    bloco = passo_numerado(2, "<i>x</i>", "<p>corpo</p>")
+    assert "<i>" not in bloco
+    assert "&lt;i&gt;" in bloco
+    assert "<p>corpo</p>" in bloco
+
+
+def test_template_passos_escapam_urls():
     pagina = _html(links_app=('https://x.test/"><b>', "https://y.test/<i>"))
     assert "<b>" not in pagina and "<i>" not in pagina

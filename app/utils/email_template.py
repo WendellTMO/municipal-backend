@@ -41,19 +41,52 @@ def _botao(texto: str, url: str) -> str:
     )
 
 
-def _bloco_app(url_apk: str, url_web: str) -> str:
-    cinza = "margin:0 0 8px 0;font-size:13px;line-height:19px;color:#5B6B85;text-align:center;"
+def passo_numerado(numero: int, titulo: str, corpo_html: str) -> str:
+    """Passo com número num círculo azul à esquerda. No Outlook o círculo vira quadrado."""
     return (
-        '<div style="border-top:1px solid #E3E8F0;margin:8px 0 16px 0;padding-top:20px;">'
-        '<p style="margin:0 0 12px 0;font-size:18px;line-height:24px;font-weight:700;'
-        'color:#0F1B33;text-align:center;">Baixe o app</p>'
-        f'<p style="{cinza}">Android</p>'
-        f"{_botao('Baixar o app para Android', url_apk)}"
-        f'<p style="{cinza}">Ao instalar, o Android pode pedir para permitir a instalação '
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="margin:0 0 8px 0;border-top:1px solid #E3E8F0;table-layout:fixed;"><tr>'
+        '<td width="44" valign="top" style="padding:20px 12px 0 0;">'
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>'
+        f'<td width="30" height="30" align="center" valign="middle" bgcolor="{COR_AZUL}" '
+        'style="width:30px;height:30px;border-radius:15px;font-size:16px;line-height:30px;'
+        f'font-weight:700;color:#FFFFFF;font-family:{FONTE};">{numero}</td>'
+        "</tr></table></td>"
+        '<td valign="top" style="padding:20px 0 0 0;">'
+        '<p style="margin:0 0 10px 0;font-size:18px;line-height:30px;font-weight:700;'
+        f'color:#0F1B33;">{escape(titulo)}</p>{corpo_html}</td></tr></table>'
+    )
+
+
+def _passos_convite(
+    botao_texto: str, botao_url: str, pin: str | None, validade: str | None, links_app: tuple
+) -> str:
+    url_apk, url_web = links_app
+    cinza = "margin:0 0 12px 0;font-size:13px;line-height:19px;color:#5B6B85;"
+    passo1 = _botao(botao_texto, botao_url)
+    if pin:
+        passo1 += _bloco_pin(pin)
+    if validade:
+        passo1 += f'<p style="{cinza}text-align:center;">{escape(validade)}</p>'
+    passo2 = (
+        _botao("Baixar o app para Android", url_apk)
+        + f'<p style="{cinza}">Ao instalar, o Android pode pedir para permitir a instalação '
         "de fontes desconhecidas.</p>"
-        f'<p style="{cinza}margin-top:16px;">No iPhone, use o BusKá pelo navegador: '
-        f'<a href="{escape(url_web)}" style="color:{COR_AZUL};">{escape(url_web)}</a></p>'
-        "</div>"
+    )
+    passo3 = (
+        '<p style="margin:0 0 12px 0;font-size:15px;line-height:22px;color:#2B3647;">'
+        "Entre com o e-mail e a senha que você criou no cadastro.</p>"
+    )
+    nota_iphone = (
+        f'<p style="{cinza}margin-top:12px;">No iPhone, o app chega em breve. '
+        f'Por enquanto use o BusKá pelo navegador: <a href="{escape(url_web)}" '
+        f'style="color:{COR_AZUL};">{escape(url_web)}</a></p>'
+    )
+    return (
+        passo_numerado(1, "Conclua seu cadastro", passo1)
+        + passo_numerado(2, "Baixe o app", passo2)
+        + passo_numerado(3, "Abra o app e entre", passo3)
+        + nota_iphone
     )
 
 
@@ -79,20 +112,17 @@ def montar_email_html(
             f"{escape(paragrafo)}</p>"
         )
 
-    bloco_pin = ""
-    if pin:
-        bloco_pin = _bloco_pin(pin)
-
-    bloco_validade = ""
-    if validade:
-        bloco_validade = (
-            '<p style="margin:0 0 16px 0;font-size:14px;line-height:21px;color:#5B6B85;'
-            f'text-align:center;">{escape(validade)}</p>'
-        )
-
-    bloco_app = ""
     if links_app:
-        bloco_app = _bloco_app(links_app[0], links_app[1])
+        corpo = _passos_convite(botao_texto, botao_url, pin, validade, links_app)
+    else:
+        corpo = _botao(botao_texto, botao_url)
+        if pin:
+            corpo += _bloco_pin(pin)
+        if validade:
+            corpo += (
+                '<p style="margin:0 0 16px 0;font-size:14px;line-height:21px;color:#5B6B85;'
+                f'text-align:center;">{escape(validade)}</p>'
+            )
 
     url = escape(botao_url)
     return (
@@ -121,7 +151,7 @@ def montar_email_html(
         f"{escape(titulo)}</h1>"
         '<p style="margin:0 0 16px 0;font-size:16px;line-height:24px;color:#2B3647;">'
         f"{escape(saudacao)}</p>"
-        f"{texto_paragrafos}{_botao(botao_texto, botao_url)}{bloco_pin}{bloco_validade}{bloco_app}"
+        f"{texto_paragrafos}{corpo}"
         '<p style="margin:0 0 8px 0;font-size:12px;line-height:18px;color:#8593A8;'
         'text-align:center;">Se o botão não funcionar, copie este link e cole no navegador:<br>'
         f'<a href="{url}" style="color:#8593A8;word-break:break-all;">{url}</a></p>'
