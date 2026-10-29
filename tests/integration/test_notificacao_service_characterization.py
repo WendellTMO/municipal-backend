@@ -437,6 +437,20 @@ def test_excluir_de_outro_usuario_404_e_mantem_a_notificacao(_db, aluno, other_a
     assert _db.session.get(Notificacao, alheia.id) is not None
 
 
+def test_excluir_todas_so_apaga_as_do_proprio_usuario(_db, aluno, other_aluno):
+    minha1 = _notificacao(_db, aluno.user.id)
+    minha2 = _notificacao(_db, aluno.user.id)
+    alheia = _notificacao(_db, other_aluno.user.id)
+    ids = [minha1.id, minha2.id, alheia.id]
+
+    resultado = NotificacaoService.excluir_todas(str(aluno.user.id))
+
+    assert resultado == {"message": "Notificações excluídas."}
+    assert _db.session.get(Notificacao, ids[0]) is None
+    assert _db.session.get(Notificacao, ids[1]) is None
+    assert _db.session.get(Notificacao, ids[2]) is not None
+
+
 def test_marcar_lida_erro_no_commit_nao_vaza_texto_do_driver(_db, aluno, monkeypatch):
     """Corrigido: mesma troca do `notificar_por_gestor`."""
     notificacao = _notificacao(_db, aluno.user.id)

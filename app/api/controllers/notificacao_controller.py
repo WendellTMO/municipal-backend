@@ -38,6 +38,13 @@ class NotificacaoListResource(Resource):
         data = request.get_json()
         return NotificacaoService.notificar_por_gestor(user_id, data), 201
 
+    @api.doc("excluir_minhas_notificacoes")
+    @jwt_required()
+    def delete(self):
+        """Exclui todas as notificações do usuário logado"""
+        user_id = get_jwt_identity()
+        return NotificacaoService.excluir_todas(user_id), 200
+
 
 @api.route("/<string:id>/lida")
 class NotificacaoLidaResource(Resource):
