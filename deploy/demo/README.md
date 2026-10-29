@@ -15,6 +15,8 @@ No seu computador (o site web), sem usar o `.env` do seu clone:
 deploy/demo/publicar-web-demo.sh
 ```
 
+`deploy/demo/verificar-demo.sh` confere o que está no ar (páginas, API, login, bundle sem localhost, hash do APK) e sai com erro se algo falhar. Os dois scripts acima já o rodam no fim.
+
 Variáveis (todas opcionais):
 
 | Variável | Padrão |

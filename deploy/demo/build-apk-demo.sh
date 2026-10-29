@@ -102,6 +102,7 @@ if [ "$PUBLICAR" = "1" ]; then
     sudo mv "$WWW/.app-version.json.tmp" "$WWW/app-version.json"
     rm -f "$JSON"
     echo "Publicado em $WWW."
+    URL="$API_URL" "$QUI/verificar-demo.sh"
 fi
 
 echo "Lembrete: faça backup de ~/buska-demo-release.keystore e ~/buska-demo-keystore.pass (sem a chave ninguém atualiza por cima)."
