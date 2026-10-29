@@ -46,6 +46,17 @@ def register_models(api):
         {"acao": fields.String(required=True, description="INICIAR ou FINALIZAR")},
     )
 
+    viagem_ponto_create_request = api.model(
+        "ViagemPontoCreateRequest",
+        {
+            "ponto_id": fields.String(description="UUID de ponto existente da prefeitura"),
+            "apelido": fields.String(description="Nome do ponto novo (máx. 100)"),
+            "latitude": fields.Float(description="Latitude do ponto novo (-90 a 90)"),
+            "longitude": fields.Float(description="Longitude do ponto novo (-180 a 180)"),
+            "posicao": fields.String(description="proxima (padrão) ou fim"),
+        },
+    )
+
     localizacao_request = api.model(
         "LocalizacaoRequest",
         {
@@ -144,6 +155,7 @@ def register_models(api):
         "viagem_lote_request": viagem_lote_request,
         "viagem_confirmacao_request": viagem_confirmacao_request,
         "viagem_acao_request": viagem_acao_request,
+        "viagem_ponto_create_request": viagem_ponto_create_request,
         "viagem_response": viagem_response,
         "viagem_list_response": viagem_list_response,
         "viagem_aluno_confirmacao_response": viagem_aluno_confirmacao_response,

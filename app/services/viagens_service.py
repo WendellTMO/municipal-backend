@@ -567,6 +567,69 @@ def list_viagens_gestor(user_id: str, filters: dict[str, Any]) -> list[Viagem]:
     )
 
 
+def adicionar_ponto_na_viagem(user_id: str, viagem_id: str, data: dict[str, Any]) -> Viagem:
+    """Motorista acrescenta uma parada só nesta viagem em andamento (a rota não muda)."""
+    user = db.session.get(User, user_id)
+    if not user or user.role != UserRole.MOTORISTA:
+        raise ForbiddenError("Apenas motoristas podem adicionar pontos à viagem")
+
+    viagem = db.session.get(Viagem, viagem_id)
+    if viagem is None or viagem.horario_rota is None:
+        raise NotFoundError("Viagem não encontrada")
+    if viagem.horario_rota.rota.prefeitura_id != user.prefeitura_id:
+        raise NotFoundError("Viagem não encontrada")
+    if viagem.motorista_id != user.id:
+        raise ForbiddenError("Esta viagem não pertence a você")
+    if viagem.status != StatusViagem.EM_ANDAMENTO:
+        raise ValidationError("A viagem precisa estar em andamento para receber novos pontos")
+
+    with transactional():
+        if "ponto_id" in data:
+            ponto = db.session.get(Ponto, data["ponto_id"])
+            if ponto is None or ponto.prefeitura_id != user.prefeitura_id:
+                raise NotFoundError("Ponto não encontrado")
+        else:
+            ponto = Ponto(
+                prefeitura_id=user.prefeitura_id,
+                apelido=data.get("apelido") or "Parada extra",
+                latitude=data["latitude"],
+                longitude=data["longitude"],
+            )
+            db.session.add(ponto)
+            db.session.flush()
+
+        # A chave de ViagemPonto é (viagem, ponto): o mesmo ponto não entra duas vezes (409).
+        for parada in viagem.pontos_visitados:
+            if parada.ponto_id == ponto.id:
+                raise ConflictError("Este ponto já faz parte da viagem")
+
+        if data.get("posicao", "proxima") == "fim":
+            nova_ordem = len(viagem.pontos_visitados) + 1
+        else:
+            # Logo depois da última parada visitada; as não visitadas descem uma posição.
+            ultima_visitada = 0
+            for parada in viagem.pontos_visitados:
+                if parada.visitado and parada.ordem > ultima_visitada:
+                    ultima_visitada = parada.ordem
+            nova_ordem = ultima_visitada + 1
+            for parada in viagem.pontos_visitados:
+                if parada.ordem >= nova_ordem:
+                    parada.ordem += 1
+
+        db.session.add(
+            ViagemPonto(viagem_id=viagem.id, ponto_id=ponto.id, ordem=nova_ordem, visitado=False)
+        )
+
+    db.session.refresh(viagem)
+    audit_logger.log_user_action(
+        action="adicionar_ponto_na_viagem",
+        user_id=user_id,
+        resource_type="viagem",
+        resource_id=viagem_id,
+    )
+    return viagem
+
+
 def cancelar_viagem(user_id: str, viagem_id: str) -> dict[str, Any]:
     """Cancela uma viagem e notifica alunos confirmados"""
     user = db.session.get(User, user_id)

@@ -22,6 +22,7 @@ from app.schemas.viagem_schema import (
     ViagemListResponseSchema,
     ViagemLoteRequestSchema,
     ViagemLoteResponseSchema,
+    ViagemPontoCreateRequestSchema,
     ViagemResponseSchema,
 )
 from app.services import viagens_service
@@ -41,6 +42,7 @@ viagem_create_request_schema = ViagemCreateRequestSchema()
 viagem_lote_request_schema = ViagemLoteRequestSchema()
 viagem_confirmacao_request_schema = ViagemConfirmacaoRequestSchema()
 viagem_acao_request_schema = ViagemAcaoRequestSchema()
+viagem_ponto_create_request_schema = ViagemPontoCreateRequestSchema()
 
 viagem_list_query_schema = ViagemListQuerySchema()
 
@@ -166,6 +168,21 @@ class ViagemAcaoResource(Resource):
         payload = viagem_acao_request_schema.load(data)
         viagem = viagens_service.controlar_viagem(user_id, id, payload)
         return viagem_response_schema.dump(viagem), 200
+
+
+@api.route("/<string:id>/pontos")
+class ViagemPontoNaHoraResource(Resource):
+    @api.doc("adicionar_ponto_na_viagem")
+    @api.expect(models["viagem_ponto_create_request"])
+    @api.response(201, "Created", models["viagem_response"])
+    @jwt_required()
+    def post(self, id: str) -> tuple[dict[str, Any], int]:
+        """(Motorista) Adiciona um ponto só a esta viagem em andamento."""
+        user_id = get_jwt_identity()
+        data = request.get_json(silent=True) or {}
+        payload = viagem_ponto_create_request_schema.load(data)
+        viagem = viagens_service.adicionar_ponto_na_viagem(user_id, id, payload)
+        return viagem_response_schema.dump(viagem), 201
 
 
 @api.route("/<string:id>/cancelar")
