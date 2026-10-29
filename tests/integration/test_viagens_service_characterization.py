@@ -355,6 +355,100 @@ def test_confirmar_presenca_ponto_informado_vence_o_padrao(
     assert registro.ponto_embarque_id == outro.id
 
 
+def _outra_instituicao(_db, prefeitura, rota, ordem=2, na_rota=True):
+    """Instituição que não é a do aluno, com ponto próprio (na rota ou não)."""
+    from app.models.enum import TipoInstituicao
+    from app.models.geo import Instituicao
+    from tests.factories.rota_factory import RotaPontoFactory
+
+    ponto_outra = Ponto(
+        prefeitura_id=prefeitura.id, latitude=-7.31, longitude=-35.71, apelido="Outra"
+    )
+    _db.session.add(ponto_outra)
+    _db.session.flush()
+    outra = Instituicao(
+        fonte="MANUAL",
+        codigo_externo="INST-OUTRA",
+        nome="Outra Escola",
+        tipo=TipoInstituicao.ESCOLA_PUBLICA,
+        uf="PB",
+        prefeitura_id=prefeitura.id,
+        ponto_id=ponto_outra.id,
+    )
+    _db.session.add(outra)
+    if na_rota:
+        _db.session.add(RotaPontoFactory(rota_id=rota.id, ponto_id=ponto_outra.id, ordem=ordem))
+    _db.session.commit()
+    return outra, ponto_outra
+
+
+def test_confirmar_presenca_ida_em_outra_instituicao_da_rota(
+    _db, prefeitura, aluno, aluno_com_instituicao, rota, rota_aluno, rota_ponto, ponto
+):
+    outra, ponto_outra = _outra_instituicao(_db, prefeitura, rota)
+    horario = _horario_operando_em(
+        _db, rota, date.today() + timedelta(days=5), sentido=SentidoViagem.IDA
+    )
+    viagem = _viagem(_db, horario, date.today() + timedelta(days=5))
+
+    registro = confirmar_presenca_aluno(
+        str(aluno.user.id),
+        str(viagem.id),
+        {
+            "confirmacao": True,
+            "ponto_embarque_id": str(ponto.id),
+            "instituicao_id": str(outra.id),
+        },
+    )
+
+    assert registro.ponto_destino_id == ponto_outra.id
+
+
+def test_confirmar_presenca_instituicao_fora_da_rota_da_400(
+    _db, prefeitura, aluno, aluno_com_instituicao, rota, rota_aluno, rota_ponto, ponto
+):
+    outra, _ = _outra_instituicao(_db, prefeitura, rota, na_rota=False)
+    horario = _horario_operando_em(
+        _db, rota, date.today() + timedelta(days=5), sentido=SentidoViagem.IDA
+    )
+    viagem = _viagem(_db, horario, date.today() + timedelta(days=5))
+
+    with pytest.raises(ValidationError) as exc:
+        confirmar_presenca_aluno(
+            str(aluno.user.id),
+            str(viagem.id),
+            {
+                "confirmacao": True,
+                "ponto_embarque_id": str(ponto.id),
+                "instituicao_id": str(outra.id),
+            },
+        )
+
+    assert exc.value.details == {"field": "instituicao_id"}
+
+
+def test_confirmar_presenca_aluno_sem_instituicao_pode_escolher_uma_da_rota(
+    _db, prefeitura, aluno, rota, rota_aluno, rota_ponto, ponto
+):
+    outra, ponto_outra = _outra_instituicao(_db, prefeitura, rota)
+    horario = _horario_operando_em(
+        _db, rota, date.today() + timedelta(days=5), sentido=SentidoViagem.VOLTA
+    )
+    viagem = _viagem(_db, horario, date.today() + timedelta(days=5))
+
+    registro = confirmar_presenca_aluno(
+        str(aluno.user.id),
+        str(viagem.id),
+        {
+            "confirmacao": True,
+            "ponto_desembarque_id": str(ponto.id),
+            "instituicao_id": str(outra.id),
+        },
+    )
+
+    assert registro.ponto_embarque_id == ponto_outra.id
+
+
 def test_confirmar_presenca_ida_sem_instituicao_da_400(
     _db, aluno, rota, rota_aluno, rota_ponto, ponto
 ):

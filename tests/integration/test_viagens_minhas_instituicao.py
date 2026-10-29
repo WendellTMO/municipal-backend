@@ -56,6 +56,24 @@ def test_aluno_com_instituicao(
     }
 
 
+def test_aluno_em_outra_instituicao_mostra_a_da_viagem(
+    _db, motorista, prefeitura, aluno, ponto, viagem_futura_agendada_com_motorista
+):
+    propria = _cria_instituicao(_db, prefeitura, codigo="propria")
+    aluno.user.instituicao_id = propria.id
+    outra = _cria_instituicao(_db, prefeitura, codigo="outra")
+    outra.nome = "Outra Escola"
+    outra.ponto_id = ponto.id
+    _db.session.commit()
+    viagem = viagem_futura_agendada_com_motorista
+    _confirma(_db, viagem, aluno.user, ponto)
+
+    resp = motorista.client.get("/v1/viagens/minhas")
+
+    item = resp.get_json()["items"][0]["alunos"][0]
+    assert item["instituicao"]["id"] == str(outra.id)
+
+
 def test_aluno_sem_instituicao_devolve_null(
     _db, motorista, aluno, ponto, viagem_futura_agendada_com_motorista
 ):

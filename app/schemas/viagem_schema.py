@@ -7,7 +7,8 @@ from flask_jwt_extended import get_jwt_identity
 from marshmallow import ValidationError as MarshmallowValidationError, fields, validates_schema
 from marshmallow.validate import Length, OneOf, Range
 
-from app.models.enum import StatusViagem
+from app.models.enum import SentidoViagem, StatusViagem
+from app.models.geo import Instituicao
 from app.models.rota import RotaAluno
 from app.schemas.common import BaseSchema
 from app.schemas.validators import validate_uuid4
@@ -97,6 +98,7 @@ class ViagemConfirmacaoRequestSchema(BaseSchema):
     confirmacao = fields.Boolean(required=True)
     ponto_embarque_id = fields.UUID(load_default=None, allow_none=True)
     ponto_desembarque_id = fields.UUID(load_default=None, allow_none=True)
+    instituicao_id = fields.UUID(load_default=None, allow_none=True)
     lembrar_escolha = fields.Boolean(load_default=False)
 
 
@@ -163,6 +165,46 @@ class ViagemLoteResponseSchema(BaseSchema):
     detalhes = fields.List(fields.String(), required=True)
 
 
+def _instituicoes_por_ponto(viagem):
+    """Instituições dos pontos confirmados da viagem, numa consulta só (guardada na viagem)."""
+    guardado = getattr(viagem, "_instituicoes_por_ponto", None)
+    if guardado is not None:
+        return guardado
+
+    ponto_ids = set()
+    for confirmacao in viagem.alunos_confirmados:
+        if confirmacao.ponto_embarque_id is not None:
+            ponto_ids.add(confirmacao.ponto_embarque_id)
+        if confirmacao.ponto_destino_id is not None:
+            ponto_ids.add(confirmacao.ponto_destino_id)
+
+    por_ponto = {}
+    if ponto_ids:
+        for instituicao in Instituicao.query.filter(Instituicao.ponto_id.in_(ponto_ids)).all():
+            por_ponto[instituicao.ponto_id] = instituicao
+    viagem._instituicoes_por_ponto = por_ponto
+    return por_ponto
+
+
+def _instituicao_da_viagem(obj):
+    """Instituição em que o aluno sobe (VOLTA) ou desce (IDA) nesta viagem.
+
+    Vem do ponto confirmado, porque o aluno pode usar uma instituição que não é a dele.
+    Sem ponto de instituição (circular ou sem confirmação), vale a instituição do aluno.
+    """
+    propria = obj.aluno.instituicao
+    sentido = obj.viagem.horario_rota.sentido if obj.viagem and obj.viagem.horario_rota else None
+    ponto_id = None
+    if sentido == SentidoViagem.IDA:
+        ponto_id = obj.ponto_destino_id
+    elif sentido == SentidoViagem.VOLTA:
+        ponto_id = obj.ponto_embarque_id
+    if ponto_id is None or (propria is not None and propria.ponto_id == ponto_id):
+        return propria
+    escolhida = _instituicoes_por_ponto(obj.viagem).get(ponto_id)
+    return escolhida or propria
+
+
 class ViagemAlunoConfirmacaoResponseSchema(BaseSchema):
     aluno_id = fields.String()
     nome = fields.String(attribute="aluno.nome")
@@ -184,7 +226,7 @@ class ViagemAlunoConfirmacaoResponseSchema(BaseSchema):
         return str(obj.ponto_destino_id)
 
     def get_instituicao(self, obj):
-        instituicao = obj.aluno.instituicao
+        instituicao = _instituicao_da_viagem(obj)
         if instituicao is None:
             return None
         return {

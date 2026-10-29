@@ -35,6 +35,10 @@ def register_models(api):
             "ponto_desembarque_id": fields.String(
                 description="Ponto da rota onde desce (volta). Se omitido, vale o padrão lembrado"
             ),
+            "instituicao_id": fields.String(
+                description="Instituição da rota onde o aluno sobe (volta) ou desce (ida), "
+                "quando não é a dele. Se omitido, vale a instituição do cadastro"
+            ),
             "lembrar_escolha": fields.Boolean(
                 description="Guarda o ponto escolhido como padrão da rota (padrão: false)"
             ),
