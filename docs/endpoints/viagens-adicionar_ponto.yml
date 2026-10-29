@@ -1,0 +1,71 @@
+tags:
+  - Viagens
+summary: Adicionar ponto na hora a uma viagem em andamento
+description: |
+  **POST** `/v1/viagens/{id}/pontos` (somente o motorista da viagem, viagem EM_ANDAMENTO).
+  O ponto vale só para esta viagem: a rota (RotaPonto) e as outras viagens não mudam.
+  A geocodificação do endereço é feita no app; o servidor recebe coordenadas.
+
+  Corpo, uma das duas formas:
+  - `{"ponto_id": "<uuid de ponto existente da mesma prefeitura>"}`
+  - `{"apelido": "...", "latitude": -7.2, "longitude": -35.9}` (cria um Ponto novo na prefeitura;
+    `apelido` opcional, máx. 100; latitude -90 a 90; longitude -180 a 180)
+
+  `posicao` opcional: `proxima` (padrão) insere logo depois da última parada visitada e
+  renumera a `ordem` das seguintes; `fim` insere no fim da lista.
+
+  Ponto já presente na viagem (visitado ou não): 409 (não é idempotente).
+
+  Erros: 400 corpo inválido ou viagem fora de andamento; 403 não é motorista ou não é o
+  motorista da viagem; 404 viagem ou ponto de outra prefeitura (ou inexistente); 409 duplicado.
+security:
+  - BearerAuth: []
+parameters:
+  - in: path
+    name: id
+    required: true
+    type: string
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      properties:
+        ponto_id:
+          type: string
+        apelido:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        posicao:
+          type: string
+          enum: [proxima, fim]
+          default: proxima
+responses:
+  201:
+    description: Viagem atualizada (mesmo formato de PUT /viagens/{id}/acao). `pontos` traz a lista completa.
+    schema:
+      type: object
+      properties:
+        pontos:
+          type: array
+          items:
+            type: object
+            properties:
+              ponto_id:
+                type: string
+              apelido:
+                type: string
+              latitude:
+                type: number
+              longitude:
+                type: number
+              ordem:
+                type: integer
+              visitado:
+                type: boolean
+              chegada_real:
+                type: string
+                format: date-time

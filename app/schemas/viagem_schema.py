@@ -5,7 +5,7 @@ from typing import Any
 
 from flask_jwt_extended import get_jwt_identity
 from marshmallow import ValidationError as MarshmallowValidationError, fields, validates_schema
-from marshmallow.validate import OneOf, Range
+from marshmallow.validate import Length, OneOf, Range
 
 from app.models.enum import StatusViagem
 from app.models.rota import RotaAluno
@@ -106,6 +106,25 @@ class ViagemAcaoRequestSchema(BaseSchema):
     acao = fields.String(required=True, validate=OneOf(["INICIAR", "FINALIZAR"]))
 
 
+class ViagemPontoCreateRequestSchema(BaseSchema):
+    """POST /viagens/<id>/pontos: ponto existente (ponto_id) ou novo (latitude e longitude)."""
+
+    ponto_id = fields.UUID(required=False)
+    apelido = fields.String(required=False, allow_none=True, validate=Length(max=100))
+    latitude = fields.Float(required=False, validate=Range(min=-90, max=90))
+    longitude = fields.Float(required=False, validate=Range(min=-180, max=180))
+    posicao = fields.String(load_default="proxima", validate=OneOf(["proxima", "fim"]))
+
+    @validates_schema
+    def validate_ponto_ou_coordenadas(self, data: dict[str, Any], **kwargs) -> None:
+        tem_ponto = "ponto_id" in data
+        tem_coordenadas = "latitude" in data or "longitude" in data
+        if tem_ponto and tem_coordenadas:
+            raise MarshmallowValidationError("Informe ponto_id ou latitude e longitude, não ambos.")
+        if not tem_ponto and ("latitude" not in data or "longitude" not in data):
+            raise MarshmallowValidationError("Informe ponto_id ou latitude e longitude.")
+
+
 class ViagemListQuerySchema(BaseSchema):
     """GET /viagens?data_inicio=...&status=..."""
 
@@ -166,6 +185,8 @@ class ViagemAlunoConfirmacaoResponseSchema(BaseSchema):
 class ViagemPontoResponseSchema(BaseSchema):
     ponto_id = fields.String()
     apelido = fields.String(attribute="ponto.apelido")
+    latitude = fields.Float(attribute="ponto.latitude")
+    longitude = fields.Float(attribute="ponto.longitude")
     ordem = fields.Integer()
     visitado = fields.Boolean()
     chegada_real = fields.DateTime()
