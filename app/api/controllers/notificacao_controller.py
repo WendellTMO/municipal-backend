@@ -47,3 +47,13 @@ class NotificacaoLidaResource(Resource):
         """Marca uma notificação como lida"""
         user_id = get_jwt_identity()
         return NotificacaoService.marcar_lida(user_id, id), 200
+
+
+@api.route("/<string:id>")
+class NotificacaoResource(Resource):
+    @api.doc("excluir_notificacao")
+    @jwt_required()
+    def delete(self, id):
+        """Exclui uma notificação do usuário logado"""
+        user_id = get_jwt_identity()
+        return NotificacaoService.excluir(user_id, id), 200
