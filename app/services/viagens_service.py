@@ -17,7 +17,7 @@ from app.core.transaction import transactional
 from app.extensions import scheduler
 from app.models.base import db
 from app.models.enum import DiaDaSemana, SentidoViagem, StatusViagem, UserRole
-from app.models.geo import Ponto
+from app.models.geo import Instituicao, Ponto
 from app.models.rota import DiasOperacao, HorarioRota, Rota, RotaAluno, RotaPonto
 from app.models.user import Aluno, User
 from app.models.viagem import AlunosConfirmados, TelemetriaViagem, Viagem, ViagemPonto
@@ -181,6 +181,33 @@ def _ponto_da_instituicao(aluno: Aluno) -> Any:
     return aluno.instituicao.ponto_id
 
 
+def _ponto_da_instituicao_da_viagem(
+    aluno: Aluno, horario: HorarioRota, data: dict[str, Any]
+) -> Any:
+    """Ponto da instituição desta viagem: a escolhida pelo aluno ou, sem escolha, a dele.
+
+    O aluno pode pegar o transporte numa instituição que não é a sua. A escolhida precisa ter
+    ponto e esse ponto precisa estar na rota da viagem.
+    """
+    instituicao_id = data.get("instituicao_id")
+    if instituicao_id is None:
+        return _ponto_da_instituicao(aluno)
+
+    instituicao = db.session.get(Instituicao, instituicao_id)
+    if instituicao is None or instituicao.ponto_id is None:
+        raise ValidationError(
+            "Instituição sem ponto de parada.", details={"field": "instituicao_id"}
+        )
+    na_rota = RotaPonto.query.filter_by(
+        rota_id=horario.rota_id, ponto_id=instituicao.ponto_id
+    ).first()
+    if na_rota is None:
+        raise ValidationError(
+            "Esta instituição não faz parte da rota da viagem.", details={"field": "instituicao_id"}
+        )
+    return instituicao.ponto_id
+
+
 def _ponto_da_rota(rota_id: Any, ponto_id: Any, campo: str) -> Any:
     """Ponto escolhido pelo aluno: precisa existir e pertencer à rota da viagem."""
     if ponto_id is None:
@@ -201,8 +228,9 @@ def _resolver_pontos(
 
     IDA: o aluno escolhe onde embarca e desce na instituição. VOLTA: parte da instituição
     e o aluno escolhe onde desce. CIRCULAR: o aluno escolhe os dois, na rota.
+    A instituição é a do aluno, ou outra da rota se ele escolher (`instituicao_id`).
     """
-    ponto_instituicao = _ponto_da_instituicao(aluno)
+    ponto_instituicao = _ponto_da_instituicao_da_viagem(aluno, horario, data)
     escolhas: dict[str, Any] = {}
 
     embarque = None
