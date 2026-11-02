@@ -658,6 +658,117 @@ def adicionar_ponto_na_viagem(user_id: str, viagem_id: str, data: dict[str, Any]
     return viagem
 
 
+# Chegada "auto" vem do GPS do aparelho: só vale perto do ponto.
+DISTANCIA_MAX_CHEGADA_AUTO_M = 150
+# Chegada antiga já não serve de aviso aos alunos; só atualiza o progresso.
+JANELA_AVISO_CHEGADA = timedelta(minutes=10)
+TOLERANCIA_RELOGIO = timedelta(minutes=5)
+IDADE_MAXIMA_CHEGADA = timedelta(hours=24)
+
+
+def _motivo_de_rejeicao_da_chegada(
+    evento: dict[str, Any], paradas: dict[Any, ViagemPonto], agora: datetime
+) -> str | None:
+    """Devolve por que o evento não pode ser aceito, ou None quando está tudo certo."""
+    parada = paradas.get(evento["ponto_id"])
+    if parada is None:
+        return "ponto_fora_da_viagem"
+    if evento["detectado_em"] > agora + TOLERANCIA_RELOGIO:
+        return "horario_no_futuro"
+    if evento["detectado_em"] < agora - IDADE_MAXIMA_CHEGADA:
+        return "horario_muito_antigo"
+    if evento["origem"] == "auto":
+        if "latitude" not in evento or "longitude" not in evento:
+            return "sem_posicao"
+        distancia = calcular_distancia_metros(
+            float(evento["latitude"]),
+            float(evento["longitude"]),
+            float(parada.ponto.latitude),
+            float(parada.ponto.longitude),
+        )
+        if distancia > DISTANCIA_MAX_CHEGADA_AUTO_M:
+            return "longe_do_ponto"
+    return None
+
+
+def registrar_chegadas(user_id: str, viagem_id: str, eventos: list[dict[str, Any]]) -> dict:
+    """Marca os pontos que o app do motorista viu o ônibus alcançar, em lote.
+
+    Idempotente: repetir um evento não muda nada, e vale a chegada mais antiga. Aceita
+    viagem em andamento ou finalizada, porque o app pode enviar a fila depois do fim.
+    """
+    user = db.session.get(User, user_id)
+    if not user or user.role != UserRole.MOTORISTA:
+        raise ForbiddenError("Apenas motoristas podem registrar chegadas")
+
+    viagem = db.session.get(Viagem, viagem_id)
+    if viagem is None or viagem.horario_rota is None:
+        raise NotFoundError("Viagem não encontrada")
+    if viagem.horario_rota.rota.prefeitura_id != user.prefeitura_id:
+        raise NotFoundError("Viagem não encontrada")
+    if viagem.motorista_id != user.id:
+        raise ForbiddenError("Esta viagem não pertence a você")
+    if viagem.status not in (StatusViagem.EM_ANDAMENTO, StatusViagem.FINALIZADA):
+        raise ValidationError("A viagem precisa estar em andamento ou finalizada")
+
+    paradas: dict[Any, ViagemPonto] = {}
+    for parada in viagem.pontos_visitados:
+        paradas[parada.ponto_id] = parada
+
+    agora = datetime.now(UTC)
+    aceitos: list[str] = []
+    rejeitados: list[dict[str, str]] = []
+    novas: list[tuple[ViagemPonto, datetime]] = []
+
+    with transactional():
+        for evento in eventos:
+            if evento["detectado_em"].tzinfo is None:
+                evento["detectado_em"] = evento["detectado_em"].replace(tzinfo=UTC)
+            motivo = _motivo_de_rejeicao_da_chegada(evento, paradas, agora)
+            if motivo is not None:
+                rejeitados.append({"ponto_id": str(evento["ponto_id"]), "motivo": motivo})
+                continue
+
+            parada = paradas[evento["ponto_id"]]
+            aceitos.append(str(evento["ponto_id"]))
+            if parada.visitado and parada.chegada_real is not None:
+                if evento["detectado_em"] < parada.chegada_real:
+                    parada.chegada_real = evento["detectado_em"]
+                continue
+            parada.visitado = True
+            parada.chegada_real = evento["detectado_em"]
+            parada.origem_chegada = evento["origem"]
+            if evento["origem"] != "conferencia":
+                novas.append((parada, evento["detectado_em"]))
+
+    # Só avisa quem está esperando agora: chegada antiga ou viagem encerrada não gera aviso.
+    if viagem.status == StatusViagem.EM_ANDAMENTO:
+        for parada, detectado_em in novas:
+            if agora - detectado_em > JANELA_AVISO_CHEGADA:
+                continue
+            esperando = AlunosConfirmados.query.filter_by(
+                viagem_id=viagem.id,
+                confirmacao=True,
+                ponto_embarque_id=parada.ponto_id,
+                embarcou=False,
+            ).all()
+            for conf in esperando:
+                NotificacaoService._criar_notificacao_interna(
+                    usuario_id=conf.aluno_id,
+                    titulo="🚌 O ônibus chegou ao seu ponto",
+                    mensagem=f"O ônibus está no seu ponto de embarque ({parada.ponto.apelido}).",
+                )
+        db.session.commit()
+
+    audit_logger.log_user_action(
+        action="registrar_chegadas",
+        user_id=user_id,
+        resource_type="viagem",
+        resource_id=viagem_id,
+    )
+    return {"aceitos": aceitos, "rejeitados": rejeitados}
+
+
 def cancelar_viagem(user_id: str, viagem_id: str) -> dict[str, Any]:
     """Cancela uma viagem e notifica alunos confirmados"""
     user = db.session.get(User, user_id)

@@ -1,0 +1,57 @@
+tags:
+  - Viagens
+summary: Registrar as chegadas aos pontos detectadas pelo app do motorista
+description: |
+  **POST** `/v1/viagens/{id}/pontos-visitados` (somente o motorista da viagem, viagem EM_ANDAMENTO
+  ou FINALIZADA). O app detecta a chegada no aparelho e guarda numa fila; quando há internet
+  envia o lote. Pode chegar depois do fim da viagem.
+
+  Corpo: `{"eventos": [{"ponto_id", "detectado_em", "latitude?", "longitude?", "origem?"}]}`
+  com 1 a 100 eventos. `detectado_em` é a hora do aparelho (ISO 8601). `origem`: `auto` (GPS, exige
+  latitude e longitude e vale até 150 m do ponto), `manual` (padrão, botão Cheguei) ou
+  `conferencia` (motorista confirmou na tela de finalizar).
+
+  Idempotente: repetir um evento não muda nada e vale a chegada mais antiga. A ordem dos pontos
+  não importa. Resposta 200 com `aceitos` (pontos já registrados) e `rejeitados` (`ponto_id` e
+  `motivo`: `ponto_fora_da_viagem`, `horario_no_futuro`, `horario_muito_antigo`, `sem_posicao`,
+  `longe_do_ponto`). Quem rejeita não precisa reenviar.
+
+  Os alunos confirmados naquele ponto recebem "O ônibus chegou ao seu ponto" só quando a viagem
+  está em andamento, a chegada tem até 10 minutos e a origem não é `conferencia`.
+
+  Erros: 400 corpo inválido ou viagem fora de andamento; 403 não é motorista ou não é o motorista
+  da viagem; 404 viagem de outra prefeitura (ou inexistente).
+security:
+  - BearerAuth: []
+parameters:
+  - in: path
+    name: id
+    required: true
+    type: string
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required: [eventos]
+      properties:
+        eventos:
+          type: array
+          items:
+            type: object
+            required: [ponto_id, detectado_em]
+            properties:
+              ponto_id:
+                type: string
+              detectado_em:
+                type: string
+              latitude:
+                type: number
+              longitude:
+                type: number
+              origem:
+                type: string
+                enum: [auto, manual, conferencia]
+responses:
+  200:
+    description: Lote processado

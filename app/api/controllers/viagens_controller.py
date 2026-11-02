@@ -16,6 +16,7 @@ from app.schemas.viagem_schema import (
     ViagemAcaoRequestSchema,
     ViagemAgendaAlunoListResponseSchema,
     ViagemAlunoConfirmacaoResponseSchema,
+    ViagemChegadasRequestSchema,
     ViagemConfirmacaoRequestSchema,
     ViagemCreateRequestSchema,
     ViagemListQuerySchema,
@@ -43,6 +44,7 @@ viagem_lote_request_schema = ViagemLoteRequestSchema()
 viagem_confirmacao_request_schema = ViagemConfirmacaoRequestSchema()
 viagem_acao_request_schema = ViagemAcaoRequestSchema()
 viagem_ponto_create_request_schema = ViagemPontoCreateRequestSchema()
+viagem_chegadas_request_schema = ViagemChegadasRequestSchema()
 
 viagem_list_query_schema = ViagemListQuerySchema()
 
@@ -183,6 +185,20 @@ class ViagemPontoNaHoraResource(Resource):
         payload = viagem_ponto_create_request_schema.load(data)
         viagem = viagens_service.adicionar_ponto_na_viagem(user_id, id, payload)
         return viagem_response_schema.dump(viagem), 201
+
+
+@api.route("/<string:id>/pontos-visitados")
+class ViagemChegadasResource(Resource):
+    @api.doc("registrar_chegadas")
+    @api.expect(models["viagem_chegadas_request"])
+    @api.response(200, "Success", models["viagem_chegadas_response"])
+    @jwt_required()
+    def post(self, id: str) -> tuple[dict[str, Any], int]:
+        """(Motorista) Registra as chegadas aos pontos detectadas pelo app, em lote e sem duplicar."""
+        user_id = get_jwt_identity()
+        data = request.get_json(silent=True) or {}
+        payload = viagem_chegadas_request_schema.load(data)
+        return viagens_service.registrar_chegadas(user_id, id, payload["eventos"]), 200
 
 
 @api.route("/<string:id>/cancelar")

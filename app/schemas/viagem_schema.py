@@ -127,6 +127,24 @@ class ViagemPontoCreateRequestSchema(BaseSchema):
             raise MarshmallowValidationError("Informe ponto_id ou latitude e longitude.")
 
 
+class ChegadaEventoSchema(BaseSchema):
+    """Uma chegada detectada pelo app do motorista (hora do aparelho)."""
+
+    ponto_id = fields.UUID(required=True)
+    detectado_em = fields.DateTime(required=True)
+    latitude = fields.Float(required=False, validate=Range(min=-90, max=90))
+    longitude = fields.Float(required=False, validate=Range(min=-180, max=180))
+    origem = fields.String(load_default="manual", validate=OneOf(["auto", "manual", "conferencia"]))
+
+
+class ViagemChegadasRequestSchema(BaseSchema):
+    """POST /viagens/<id>/pontos-visitados: lote de chegadas, até 100 por chamada."""
+
+    eventos = fields.List(
+        fields.Nested(ChegadaEventoSchema), required=True, validate=Length(min=1, max=100)
+    )
+
+
 class ViagemListQuerySchema(BaseSchema):
     """GET /viagens?data_inicio=...&status=..."""
 
