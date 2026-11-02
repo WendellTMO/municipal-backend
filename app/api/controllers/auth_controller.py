@@ -1,16 +1,12 @@
-from html import escape
 from typing import Any
 
-from flask import Response, current_app, request
+from flask import current_app, request
 from flask_restx import Namespace, Resource
 
 from app.api.contracts import auth_contract
-from app.core.exceptions import AppError, ValidationError
+from app.core.exceptions import ValidationError
 from app.schemas.auth_schema import LoginRequestSchema, TokenResponseSchema
 from app.services import auth_service
-from app.utils.email_template import AMARELO_CLARO, COR_AZUL
-
-FONTE_SISTEMA = "system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
 
 api = Namespace("auth", description="Autenticação e gerenciamento de sessão")
 
@@ -72,100 +68,19 @@ class AuthForgotPassword(Resource):
         }, 200
 
 
-def _pagina_marca(titulo: str, corpo: str) -> str:
-    """Página HTML com a marca do BusKá (cabeçalho azul, cartão branco, rodapé)."""
-    return f"""<!DOCTYPE html>
-<html lang="pt-BR">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{escape(titulo)} - BusKá</title>
-<style>
-  body {{ margin: 0; background: #F2F5FA; color: #1F2937; font-family: {FONTE_SISTEMA}; }}
-  header {{ background: {COR_AZUL}; padding: 22px 16px; text-align: center; }}
-  .marca {{ font-size: 2rem; font-weight: 800; color: #fff; }}
-  .marca span {{ color: {AMARELO_CLARO}; }}
-  main {{ max-width: 420px; margin: -12px auto 0; padding: 0 16px; }}
-  .cartao {{ background: #fff; border-radius: 16px; padding: 28px 22px; margin-top: 32px;
-    box-shadow: 0 4px 16px rgba(3, 71, 208, 0.12); }}
-  h1 {{ margin: 0 0 8px; font-size: 1.4rem; }}
-  p {{ margin: 0 0 16px; line-height: 1.5; color: #4B5563; }}
-  input {{ width: 100%; padding: 16px; margin: 6px 0; box-sizing: border-box; font-size: 1rem;
-    border: 1px solid #CBD5E1; border-radius: 12px; }}
-  .botao {{ display: block; width: 100%; padding: 16px; margin-top: 12px; box-sizing: border-box;
-    background: {COR_AZUL}; color: #fff; border: none; border-radius: 12px; font-size: 1rem;
-    font-weight: 700; text-align: center; text-decoration: none; cursor: pointer; }}
-  footer {{ text-align: center; padding: 24px 16px; font-size: 0.85rem; color: #6B7280; }}
-</style>
-</head>
-<body>
-  <header><div class="marca"><span>Bus</span>Ká</div></header>
-  <main><div class="cartao">{corpo}</div></main>
-  <footer>gestão inteligente do transporte escolar municipal</footer>
-</body>
-</html>"""
-
-
-def _reset_password_form_html(token: str, action_url: str) -> str:
-    """Formulário de redefinição de senha (usado quando o link do e-mail abre no navegador)."""
-    corpo = f"""<h1>Redefinir senha</h1>
-  <p>Digite sua nova senha (mínimo 8 caracteres).</p>
-  <form method="POST" action="{escape(action_url)}">
-    <input type="hidden" name="token" value="{escape(token)}">
-    <input type="password" name="new_password" placeholder="Nova senha" required minlength="8" autocomplete="new-password">
-    <input type="password" name="confirm_password" placeholder="Confirmar senha" required minlength="8" autocomplete="new-password">
-    <button class="botao" type="submit">Redefinir senha</button>
-  </form>"""
-    return _pagina_marca("Redefinir senha", corpo)
-
-
-def _reset_password_sucesso_html(frontend_url: str) -> str:
-    corpo = f"""<h1>Senha redefinida</h1>
-  <p>Agora você já pode entrar no app.</p>
-  <a class="botao" href="{escape(frontend_url)}">Entrar no app</a>"""
-    return _pagina_marca("Senha redefinida", corpo)
-
-
-def _reset_password_erro_html(mensagem: str) -> str:
-    corpo = f"""<h1>Não foi possível redefinir</h1>
-  <p>{escape(mensagem)}</p>
-  <p>Solicite um novo link de recuperação de senha pelo app.</p>"""
-    return _pagina_marca("Erro ao redefinir senha", corpo)
-
-
-def _quer_json() -> bool:
-    return request.is_json or "application/json" in request.headers.get("Accept", "")
-
-
-def _html(html: str, status: int) -> Response:
-    return Response(html, status=status, mimetype="text/html; charset=utf-8")
-
-
 @api.route("/reset-password")
-@api.doc(False)
 class AuthResetPassword(Resource):
-    def get(self) -> Response:
-        """Serve HTML form to reset password (link in email)."""
-        token = request.args.get("token", "").strip()
-        if not token:
-            return _html(_reset_password_erro_html("Link inválido: token ausente."), 400)
-        return _html(_reset_password_form_html(token, request.path), 200)
-
-    def post(self) -> Any:
-        """Reset password with token (from form or API)."""
-        if _quer_json():
-            return self._redefinir_json()
-        try:
-            self._redefinir()
-        except AppError as exc:
-            return _html(_reset_password_erro_html(exc.message), exc.status_code)
-        frontend_url = current_app.config.get("FRONTEND_URL") or "/"
-        return _html(_reset_password_sucesso_html(frontend_url), 200)
-
-    def _redefinir_json(self) -> tuple[dict[str, Any], int]:
-        self._redefinir()
-        return {"message": "Senha redefinida com sucesso. Faça login com a nova senha."}, 200
-
-    def _redefinir(self) -> None:
-        data = request.get_json(silent=True) or request.form
+    @api.doc(
+        "auth_reset_password",
+        responses={
+            200: "Senha redefinida",
+            400: "Token inválido ou expirado, senhas diferentes ou senha fraca",
+        },
+    )
+    @api.expect(models["reset_password_request"])
+    def post(self) -> tuple[dict[str, Any], int]:
+        """Redefine a senha com o token recebido por e-mail (tela do app em /redefinir-senha)."""
+        data = request.get_json(silent=True) or {}
         token = (data.get("token") or "").strip()
         new_password = (data.get("new_password") or "").strip()
         confirm = (data.get("confirm_password") or "").strip()
@@ -176,3 +91,4 @@ class AuthResetPassword(Resource):
         if new_password != confirm:
             raise ValidationError("As senhas não coincidem")
         auth_service.reset_password(token, new_password)
+        return {"message": "Senha redefinida com sucesso. Faça login com a nova senha."}, 200

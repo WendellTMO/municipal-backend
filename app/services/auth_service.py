@@ -163,7 +163,7 @@ def request_password_reset(email_raw: str, base_url: str) -> None:
     with transactional():
         db.session.add(reset_record)
 
-    link = f"{base_url.rstrip('/')}/v1/auth/reset-password?token={token}"
+    link = f"{base_url.rstrip('/')}/redefinir-senha/{token}"
     subject = "Recuperação de senha - BusKá"
     body_plain = (
         f"Olá, {user.nome}.\n\n"

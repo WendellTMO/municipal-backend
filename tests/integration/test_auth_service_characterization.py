@@ -248,7 +248,7 @@ def test_reset_request_monta_o_link_com_o_token(_db, aluno, emails_enviados):
     request_password_reset(aluno.user.email, "https://app.buska/")
 
     registro = PasswordResetToken.query.one()
-    esperado = f"https://app.buska/v1/auth/reset-password?token={registro.token}"
+    esperado = f"https://app.buska/redefinir-senha/{registro.token}"
     assert esperado in emails_enviados[0]["body_plain"]
     assert esperado in emails_enviados[0]["body_html"]
 
@@ -256,8 +256,8 @@ def test_reset_request_monta_o_link_com_o_token(_db, aluno, emails_enviados):
 def test_reset_request_remove_a_barra_final_da_base_url(_db, aluno, emails_enviados):
     request_password_reset(aluno.user.email, "https://app.buska///")
 
-    assert "https://app.buska/v1/auth/" in emails_enviados[0]["body_plain"]
-    assert "buska///v1" not in emails_enviados[0]["body_plain"]
+    assert "https://app.buska/redefinir-senha/" in emails_enviados[0]["body_plain"]
+    assert "buska///redefinir" not in emails_enviados[0]["body_plain"]
 
 
 def test_reset_request_duas_vezes_gera_dois_tokens_validos(_db, aluno, emails_enviados):
@@ -370,14 +370,6 @@ def test_forgot_password_monta_link_com_frontend_url_e_nao_com_url_root(
 
     assert resposta.status_code == 200
     registro = PasswordResetToken.query.one()
-    esperado = f"https://buska.exemplo.test/v1/auth/reset-password?token={registro.token}"
+    esperado = f"https://buska.exemplo.test/redefinir-senha/{registro.token}"
     assert esperado in emails_enviados[0]["body_plain"]
     assert f'href="{esperado}"' in emails_enviados[0]["body_html"]
-
-
-def test_formulario_de_reset_escapa_o_token(client):
-    resposta = client.get('/v1/auth/reset-password?token="><script>x</script>')
-
-    corpo = resposta.get_data(as_text=True)
-    assert "<script>x</script>" not in corpo
-    assert 'action="/v1/auth/reset-password"' in corpo

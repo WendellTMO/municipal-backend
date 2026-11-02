@@ -50,59 +50,30 @@ def _token_reset(_db, user_id):
 
 
 @pytest.mark.integration
-def test_reset_form_tem_a_marca(client):
-    r = client.get("/v1/auth/reset-password?token=abc")
-    html = r.get_data(as_text=True)
-    assert r.status_code == 200
-    assert "#0347D0" in html and "viewport" in html and "transporte escolar municipal" in html
+def test_reset_nao_serve_mais_pagina_html(client):
+    # A tela de redefinir senha é do app (/redefinir-senha/<token>); a API só recebe o POST.
+    assert client.get("/v1/auth/reset-password?token=abc").status_code == 405
 
 
 @pytest.mark.integration
-def test_reset_form_sem_token_pagina_de_erro_400(client):
-    r = client.get("/v1/auth/reset-password")
-    assert r.status_code == 400
-    assert "token ausente" in r.get_data(as_text=True)
-
-
-@pytest.mark.integration
-def test_reset_post_formulario_devolve_pagina_de_sucesso(client, aluno, _db):
+def test_reset_post_senha_curta_400_json(client, aluno, _db):
     token = _token_reset(_db, aluno.user.id)
     r = client.post(
         "/v1/auth/reset-password",
-        data={"token": token, "new_password": "NovaSenha123!", "confirm_password": "NovaSenha123!"},
-        headers={"Accept": "text/html"},
+        json={"token": token, "new_password": "123", "confirm_password": "123"},
     )
-    html = r.get_data(as_text=True)
-    assert r.status_code == 200
-    assert r.mimetype == "text/html"
-    assert "Senha redefinida" in html and "Agora você já pode entrar no app" in html
-
-
-@pytest.mark.integration
-def test_reset_post_formulario_token_invalido_pagina_de_erro_400(client):
-    r = client.post(
-        "/v1/auth/reset-password",
-        data={
-            "token": "<b>x</b>",
-            "new_password": "NovaSenha123!",
-            "confirm_password": "NovaSenha123!",
-        },
-    )
-    html = r.get_data(as_text=True)
     assert r.status_code == 400
-    assert r.mimetype == "text/html"
-    assert "Link inválido ou expirado" in html
+    assert "error" in r.get_json()
 
 
 @pytest.mark.integration
-def test_reset_post_formulario_senha_curta_pagina_de_erro_400(client, aluno, _db):
+def test_reset_post_senhas_diferentes_400_json(client, aluno, _db):
     token = _token_reset(_db, aluno.user.id)
     r = client.post(
         "/v1/auth/reset-password",
-        data={"token": token, "new_password": "123", "confirm_password": "123"},
+        json={"token": token, "new_password": "NovaSenha123!", "confirm_password": "Outra123!"},
     )
     assert r.status_code == 400
-    assert r.mimetype == "text/html"
 
 
 @pytest.mark.integration
