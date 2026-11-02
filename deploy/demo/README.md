@@ -70,5 +70,5 @@ devem bloquear o uso até atualizar. Com `0` a atualização é opcional.
 
 ## nginx
 
-`nginx-demo.conf` serve `/app-version.json` com `Cache-Control: no-cache`, antes do
+`nginx-demo.conf` serve `/app-version.json` e `/buska.apk` com `Cache-Control: no-cache`, antes do
 `location /`, para o app sempre ver a versão publicada mais recente.
