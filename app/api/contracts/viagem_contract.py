@@ -61,6 +61,43 @@ def register_models(api):
         },
     )
 
+    chegada_evento = api.model(
+        "ChegadaEvento",
+        {
+            "ponto_id": fields.String(required=True, description="UUID do ponto da viagem"),
+            "detectado_em": fields.String(
+                required=True, description="Hora da chegada no aparelho (ISO 8601)"
+            ),
+            "latitude": fields.Float(description="Posição do ônibus na chegada"),
+            "longitude": fields.Float(description="Posição do ônibus na chegada"),
+            "origem": fields.String(description="auto, manual (padrão) ou conferencia"),
+        },
+    )
+
+    viagem_chegadas_request = api.model(
+        "ViagemChegadasRequest",
+        {"eventos": fields.List(fields.Nested(chegada_evento), required=True)},
+    )
+
+    chegada_rejeitada = api.model(
+        "ChegadaRejeitada",
+        {
+            "ponto_id": fields.String(),
+            "motivo": fields.String(
+                description="ponto_fora_da_viagem, horario_no_futuro, horario_muito_antigo, "
+                "sem_posicao ou longe_do_ponto"
+            ),
+        },
+    )
+
+    viagem_chegadas_response = api.model(
+        "ViagemChegadasResponse",
+        {
+            "aceitos": fields.List(fields.String, description="Pontos já registrados na viagem"),
+            "rejeitados": fields.List(fields.Nested(chegada_rejeitada)),
+        },
+    )
+
     localizacao_request = api.model(
         "LocalizacaoRequest",
         {
@@ -167,6 +204,8 @@ def register_models(api):
         "viagem_confirmacao_request": viagem_confirmacao_request,
         "viagem_acao_request": viagem_acao_request,
         "viagem_ponto_create_request": viagem_ponto_create_request,
+        "viagem_chegadas_request": viagem_chegadas_request,
+        "viagem_chegadas_response": viagem_chegadas_response,
         "viagem_response": viagem_response,
         "viagem_list_response": viagem_list_response,
         "viagem_aluno_confirmacao_response": viagem_aluno_confirmacao_response,

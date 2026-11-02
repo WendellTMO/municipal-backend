@@ -79,7 +79,10 @@ class ViagemPonto(db.Model):
     visitado = db.Column(db.Boolean, server_default="false")
 
     chegada_estimada = db.Column(db.DateTime(timezone=True), nullable=True)
+    # Hora em que o app do motorista percebeu a chegada (hora do aparelho).
     chegada_real = db.Column(db.DateTime(timezone=True), nullable=True)
+    # Como a chegada foi registrada: auto, manual ou conferencia.
+    origem_chegada = db.Column(db.String(20), nullable=True)
 
     aviso_aproximacao_enviado = db.Column(db.Boolean, server_default="false", nullable=False)
 
