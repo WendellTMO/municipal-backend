@@ -564,8 +564,17 @@ def controlar_viagem(user_id: str, viagem_id: str, data: dict[str, Any]) -> Viag
                 km_total = round(distancia_metros / 1000.0, 2)
 
             viagem.km_real = km_total
+        elif acao == "MARCAR_REALIZADA":
+            # Viagem que passou do horário sem ser registrada no app: o motorista confirma que foi feita.
+            if viagem.status != StatusViagem.AGENDADA:
+                raise ValidationError("Só uma viagem agendada pode ser marcada como realizada")
+            saida = datetime.combine(viagem.data, viagem.horario_rota.horario_saida)
+            if saida > datetime.now():
+                raise ValidationError("A viagem ainda não começou")
+            viagem.status = StatusViagem.FINALIZADA
+            viagem.realizada_sem_app = True
         else:
-            raise ValidationError("Ação inválida. Use INICIAR ou FINALIZAR")
+            raise ValidationError("Ação inválida. Use INICIAR, FINALIZAR ou MARCAR_REALIZADA")
 
         return viagem
 

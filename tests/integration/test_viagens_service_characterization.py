@@ -873,7 +873,7 @@ def test_controlar_viagem_acao_invalida_400(_db, motorista, viagem_futura_agenda
             {"acao": "PAUSAR"},
         )
 
-    assert exc.value.message == "Ação inválida. Use INICIAR ou FINALIZAR"
+    assert exc.value.message == "Ação inválida. Use INICIAR, FINALIZAR ou MARCAR_REALIZADA"
 
 
 def test_controlar_viagem_gestor_de_outra_prefeitura_404(

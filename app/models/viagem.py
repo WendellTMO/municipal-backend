@@ -31,6 +31,8 @@ class Viagem(db.Model):
     inicio_real = db.Column(db.DateTime(timezone=True), nullable=True)
     fim_real = db.Column(db.DateTime(timezone=True), nullable=True)
     km_real = db.Column(db.Numeric(10, 2), nullable=True)
+    # O motorista confirmou depois que a viagem foi feita, sem ter registrado pelo app.
+    realizada_sem_app = db.Column(db.Boolean, nullable=False, server_default="false")
 
     motorista_lat = db.Column(db.Numeric(10, 8), nullable=True)
     motorista_lon = db.Column(db.Numeric(11, 8), nullable=True)

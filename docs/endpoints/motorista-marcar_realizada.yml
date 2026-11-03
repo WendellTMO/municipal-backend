@@ -1,0 +1,36 @@
+tags:
+  - Viagens
+summary: Confirmar que uma viagem passada foi feita, sem registro no app
+description: |
+  **PUT** `/v1/viagens/{id}/acao` com `{"acao": "MARCAR_REALIZADA"}`. Para a viagem AGENDADA cujo horário
+  de saída já passou e que ninguém iniciou pelo app. Vira FINALIZADA com `realizada_sem_app = true`, para
+  o painel separar o que foi medido do que foi só confirmado depois.
+
+  Quem pode: o motorista dono da viagem ou o gestor da prefeitura dela (as mesmas regras de INICIAR e
+  FINALIZAR). Viagem de outra prefeitura dá 404.
+
+  Efeito nos relatórios: a viagem conta em `viagens_realizadas`, mas não entra em `alunos_transportados`
+  nem em `vagas_desperdicadas`, porque não houve embarque medido.
+
+  Erros: 400 viagem que não está AGENDADA ou que ainda não começou; 403 papel sem permissão; 404 viagem
+  inexistente ou de outra prefeitura.
+security:
+  - BearerAuth: []
+parameters:
+  - in: path
+    name: id
+    required: true
+    type: string
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required: [acao]
+      properties:
+        acao:
+          type: string
+          enum: [MARCAR_REALIZADA]
+responses:
+  200:
+    description: Viagem finalizada com realizada_sem_app

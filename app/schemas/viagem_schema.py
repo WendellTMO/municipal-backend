@@ -105,7 +105,9 @@ class ViagemConfirmacaoRequestSchema(BaseSchema):
 class ViagemAcaoRequestSchema(BaseSchema):
     """PUT /viagens/<id>/acao"""
 
-    acao = fields.String(required=True, validate=OneOf(["INICIAR", "FINALIZAR"]))
+    acao = fields.String(
+        required=True, validate=OneOf(["INICIAR", "FINALIZAR", "MARCAR_REALIZADA"])
+    )
 
 
 class ViagemPontoCreateRequestSchema(BaseSchema):
@@ -274,6 +276,7 @@ class ViagemResponseSchema(BaseSchema):
     # Schedule info
     horario_inicio = fields.Method("get_horario_inicio")
     horario_fim = fields.DateTime(attribute="fim_real")
+    realizada_sem_app = fields.Boolean()
     inicio_real = fields.DateTime()  # Actual start time for elapsed calculation
     tipo = fields.Method("get_tipo")
     rota_id = fields.Method("get_rota_id")

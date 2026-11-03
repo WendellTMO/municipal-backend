@@ -94,6 +94,8 @@ def relatorio_periodo_gestor(gestor_id: str, data_inicio: str, data_fim: str) ->
                 Viagem.data >= data_inicio,
                 Viagem.data <= data_fim,
                 Viagem.status == StatusViagem.FINALIZADA,
+                # Sem registro no app não há embarque medido: não entra na conta de vagas.
+                Viagem.realizada_sem_app.is_(False),
             )
             .first()
         )
