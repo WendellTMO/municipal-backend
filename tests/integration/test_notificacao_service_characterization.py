@@ -279,24 +279,74 @@ def test_notificar_grava_corpo_e_data_de_envio(_db, gestor, rota, aluno):
 # ─── notificar_por_gestor: falhas conhecidas ────────────────────────────────
 
 
-def test_notificar_gestor_de_outra_prefeitura_alcanca_rota_alheia(_db, other_gestor, rota, aluno):
-    """
-    CARACTERIZAÇÃO DE FALHA CONHECIDA (não corrigida aqui).
-
-    O guarda só checa o papel. Nada compara a prefeitura do gestor com a da
-    rota, então um gestor manda comunicado para os alunos de qualquer
-    prefeitura.
-    """
+def test_notificar_gestor_de_outra_prefeitura_nao_alcanca_rota_alheia(
+    _db, other_gestor, rota, aluno
+):
     _db.session.add(RotaAluno(rota_id=rota.id, aluno_id=aluno.user.id))
     _db.session.commit()
 
-    resultado = NotificacaoService.notificar_por_gestor(
-        str(other_gestor.user.id),
-        {"titulo": "Invasivo", "mensagem": "m", "rota_id": str(rota.id)},
+    with pytest.raises(NotFoundError):
+        NotificacaoService.notificar_por_gestor(
+            str(other_gestor.user.id),
+            {"titulo": "Invasivo", "mensagem": "m", "rota_id": str(rota.id)},
+        )
+
+    assert _titulos_de(aluno.user.id) == []
+
+
+def test_notificar_gestor_de_outra_prefeitura_nao_alcanca_viagem_alheia(
+    _db, other_gestor, aluno, viagem_futura_agendada_com_motorista
+):
+    _confirmacao(_db, viagem_futura_agendada_com_motorista.id, aluno.user.id, True)
+
+    with pytest.raises(NotFoundError):
+        NotificacaoService.notificar_por_gestor(
+            str(other_gestor.user.id),
+            {
+                "titulo": "Invasivo",
+                "mensagem": "m",
+                "viagem_id": str(viagem_futura_agendada_com_motorista.id),
+            },
+        )
+
+    assert _titulos_de(aluno.user.id) == []
+
+
+def test_notificar_rota_da_prefeitura_chega_a_aluno_de_outra_prefeitura(
+    _db, gestor, rota, other_aluno
+):
+    # Multi-tenant: o gestor pode permitir que aluno de outra prefeitura use a rota dele.
+    # O que vale é a prefeitura da rota, não a do aluno inscrito.
+    _db.session.add(RotaAluno(rota_id=rota.id, aluno_id=other_aluno.user.id))
+    _db.session.commit()
+
+    NotificacaoService.notificar_por_gestor(
+        str(gestor.user.id), {"titulo": "Aviso", "mensagem": "m", "rota_id": str(rota.id)}
     )
 
-    assert resultado == {"message": "Notificação enviada para 1 aluno(s) com sucesso."}
-    assert _titulos_de(aluno.user.id) == ["Invasivo"]
+    assert _titulos_de(other_aluno.user.id) == ["Aviso"]
+
+
+def test_notificar_motorista_nao_amplia_o_publico_com_rota_id(
+    _db, motorista, rota, aluno, other_aluno, viagem_futura_iniciada_com_motorista
+):
+    # rota_id é ignorado para motorista: só chega a quem confirmou a própria viagem.
+    _db.session.add(RotaAluno(rota_id=rota.id, aluno_id=aluno.user.id))
+    _db.session.commit()
+    _confirmacao(_db, viagem_futura_iniciada_com_motorista.id, other_aluno.user.id, True)
+
+    NotificacaoService.notificar_por_gestor(
+        str(motorista.user.id),
+        {
+            "titulo": "Aviso",
+            "mensagem": "m",
+            "rota_id": str(rota.id),
+            "viagem_id": str(viagem_futura_iniciada_com_motorista.id),
+        },
+    )
+
+    assert _titulos_de(aluno.user.id) == []
+    assert _titulos_de(other_aluno.user.id) == ["Aviso"]
 
 
 def test_notificar_rota_id_malformado_estoura_no_banco(_db, gestor):

@@ -11,7 +11,7 @@ from app.core.transaction import transactional
 from app.models.base import db
 from app.models.enum import StatusViagem, UserRole
 from app.models.notificacao import Notificacao
-from app.models.rota import RotaAluno
+from app.models.rota import Rota, RotaAluno
 from app.models.user import User
 from app.models.viagem import AlunosConfirmados, Viagem
 from app.utils import audit_logger
@@ -99,11 +99,24 @@ class NotificacaoService:
 
         titulo = dados.get("titulo")
         mensagem = dados.get("mensagem")
-        rota_id = dados.get("rota_id")
+        # Motorista só avisa a própria viagem: rota_id não pode ampliar o público.
+        rota_id = dados.get("rota_id") if user.role == UserRole.GESTOR else None
         viagem_id = dados.get("viagem_id")
 
         if not titulo or not mensagem:
             raise ValidationError("Título e mensagem são obrigatórios.")
+
+        # A rota ou a viagem alvo precisa ser da prefeitura de quem avisa. O público é quem está
+        # inscrito nela, mesmo que o aluno seja de outra prefeitura (quando o gestor permite).
+        if rota_id:
+            rota = db.session.get(Rota, rota_id)
+            if rota is None or rota.prefeitura_id != user.prefeitura_id:
+                raise NotFoundError("Rota não encontrada.")
+        elif viagem_id:
+            viagem_alvo = db.session.get(Viagem, viagem_id)
+            horario = viagem_alvo.horario_rota if viagem_alvo else None
+            if horario is None or horario.rota.prefeitura_id != user.prefeitura_id:
+                raise NotFoundError("Viagem não encontrada.")
 
         usuarios_notificados = set()
 

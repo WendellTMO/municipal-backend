@@ -501,6 +501,12 @@ def list_viagens_motorista(user_id: str) -> list[Viagem]:
     )
 
 
+def _exigir_viagem_da_prefeitura(user: User, viagem: Viagem) -> None:
+    """404 quando a viagem não é da prefeitura do usuário (a dona é a da rota)."""
+    if viagem.horario_rota is None or viagem.horario_rota.rota.prefeitura_id != user.prefeitura_id:
+        raise NotFoundError("Viagem não encontrada")
+
+
 def controlar_viagem(user_id: str, viagem_id: str, data: dict[str, Any]) -> Viagem:
     """Start or finish a trip. Expects schema-validated payload with 'acao'."""
     user = db.session.get(User, user_id)
@@ -512,6 +518,9 @@ def controlar_viagem(user_id: str, viagem_id: str, data: dict[str, Any]) -> Viag
     if not viagem:
         raise NotFoundError("Viagem não encontrada")
 
+    if user.role not in (UserRole.MOTORISTA, UserRole.GESTOR):
+        raise ForbiddenError("Apenas motoristas ou gestores podem iniciar ou finalizar viagens")
+    _exigir_viagem_da_prefeitura(user, viagem)
     if user.role == UserRole.MOTORISTA and viagem.motorista_id != user.id:
         raise ForbiddenError("Esta viagem não pertence a você")
 
@@ -778,6 +787,7 @@ def cancelar_viagem(user_id: str, viagem_id: str) -> dict[str, Any]:
     viagem = db.session.get(Viagem, viagem_id)
     if not viagem:
         raise NotFoundError("Viagem não encontrada")
+    _exigir_viagem_da_prefeitura(user, viagem)
 
     if viagem.status in (StatusViagem.FINALIZADA, StatusViagem.CANCELADA):
         raise ValidationError(f"Não é possível cancelar uma viagem com status {viagem.status.name}")
@@ -836,6 +846,9 @@ def atualizar_localizacao(user_id: str, viagem_id: str, data: dict) -> dict:
     viagem = db.session.get(Viagem, viagem_id)
     if not viagem:
         raise NotFoundError("Viagem não encontrada")
+    _exigir_viagem_da_prefeitura(user, viagem)
+    if viagem.motorista_id != user.id:
+        raise ForbiddenError("Esta viagem não pertence a você")
 
     if viagem.status != StatusViagem.EM_ANDAMENTO:
         raise ValidationError(f"A viagem não está em andamento (Status: {viagem.status.name})")

@@ -17,6 +17,18 @@ from app.utils import audit_logger
 logger = logging.getLogger(__name__)
 
 
+def _ocorrencia_da_prefeitura(ocorrencia: Ocorrencia, prefeitura_id: Any) -> bool:
+    """É da prefeitura quando o autor é dela (como no listar) ou a viagem é de uma rota dela."""
+    if ocorrencia.autor.prefeitura_id == prefeitura_id:
+        return True
+    viagem = ocorrencia.viagem
+    return (
+        viagem is not None
+        and viagem.horario_rota is not None
+        and viagem.horario_rota.rota.prefeitura_id == prefeitura_id
+    )
+
+
 class OcorrenciaService:
     @staticmethod
     def criar(user_id: str, dados: dict[str, Any]) -> Ocorrencia:
@@ -110,10 +122,10 @@ class OcorrenciaService:
     def resolver(gestor_id: str, ocorrencia_id: str) -> Ocorrencia:
         """Gestor marca uma ocorrência como resolvida."""
 
-        get_gestor_or_403(gestor_id, "Apenas gestores podem resolver ocorrências.")
+        gestor = get_gestor_or_403(gestor_id, "Apenas gestores podem resolver ocorrências.")
 
         ocorrencia = db.session.get(Ocorrencia, ocorrencia_id)
-        if not ocorrencia:
+        if not ocorrencia or not _ocorrencia_da_prefeitura(ocorrencia, gestor.prefeitura_id):
             raise NotFoundError("Ocorrência não encontrada.")
         if ocorrencia.status == StatusOcorrencia.RESOLVIDA:
             raise ValidationError("Ocorrência já foi resolvida.")

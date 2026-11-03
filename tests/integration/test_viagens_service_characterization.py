@@ -40,6 +40,7 @@ from app.services.viagens_service import (
     listar_pontos_embarque,
     obter_localizacao_onibus,
 )
+from tests.factories.user_factory import MotoristaFactory
 
 pytestmark = pytest.mark.integration
 
@@ -775,17 +776,38 @@ def test_controlar_viagem_viagem_inexistente_404(_db, motorista):
     assert exc.value.message == "Viagem não encontrada"
 
 
+def _outro_motorista_da_prefeitura(_db, prefeitura):
+    outro = MotoristaFactory(prefeitura_id=prefeitura.id)
+    _db.session.add(outro)
+    _db.session.commit()
+    return outro
+
+
 def test_controlar_viagem_motorista_de_outra_viagem_403(
+    _db, prefeitura, viagem_futura_agendada_com_motorista
+):
+    outro = _outro_motorista_da_prefeitura(_db, prefeitura)
+
+    with pytest.raises(ForbiddenError) as exc:
+        controlar_viagem(
+            str(outro.id), str(viagem_futura_agendada_com_motorista.id), {"acao": "INICIAR"}
+        )
+
+    assert exc.value.message == "Esta viagem não pertence a você"
+
+
+def test_controlar_viagem_motorista_de_outra_prefeitura_404(
     _db, other_motorista, viagem_futura_agendada_com_motorista
 ):
-    with pytest.raises(ForbiddenError) as exc:
+    with pytest.raises(NotFoundError):
         controlar_viagem(
             str(other_motorista.user.id),
             str(viagem_futura_agendada_com_motorista.id),
             {"acao": "INICIAR"},
         )
 
-    assert exc.value.message == "Esta viagem não pertence a você"
+    _db.session.refresh(viagem_futura_agendada_com_motorista)
+    assert viagem_futura_agendada_com_motorista.status == StatusViagem.AGENDADA
 
 
 def test_controlar_viagem_iniciar_muda_status_e_marca_inicio(
@@ -854,41 +876,40 @@ def test_controlar_viagem_acao_invalida_400(_db, motorista, viagem_futura_agenda
     assert exc.value.message == "Ação inválida. Use INICIAR ou FINALIZAR"
 
 
-def test_controlar_viagem_gestor_de_outra_prefeitura_inicia_viagem_alheia(
+def test_controlar_viagem_gestor_de_outra_prefeitura_404(
     _db, other_gestor, viagem_futura_agendada_com_motorista
 ):
-    """
-    CARACTERIZAÇÃO DE FALHA CONHECIDA (não corrigida aqui).
+    with pytest.raises(NotFoundError):
+        controlar_viagem(
+            str(other_gestor.user.id),
+            str(viagem_futura_agendada_com_motorista.id),
+            {"acao": "INICIAR"},
+        )
 
-    O único gate é ``role == MOTORISTA and viagem.motorista_id != user.id``.
-    Não existe checagem de prefeitura, então um GESTOR de outra prefeitura
-    inicia e finaliza viagens que não são dele.
-    """
-    viagem = controlar_viagem(
-        str(other_gestor.user.id),
-        str(viagem_futura_agendada_com_motorista.id),
-        {"acao": "INICIAR"},
-    )
-
-    assert viagem.status == StatusViagem.EM_ANDAMENTO
+    _db.session.refresh(viagem_futura_agendada_com_motorista)
+    assert viagem_futura_agendada_com_motorista.status == StatusViagem.AGENDADA
 
 
-def test_controlar_viagem_aluno_tambem_passa_no_gate(
-    _db, aluno, viagem_futura_agendada_com_motorista
+def test_controlar_viagem_gestor_da_mesma_prefeitura_inicia(
+    _db, gestor, viagem_futura_agendada_com_motorista
 ):
-    """
-    CARACTERIZAÇÃO DE FALHA CONHECIDA (não corrigida aqui).
-
-    O gate só olha para MOTORISTA, então ALUNO passa direto e consegue
-    iniciar a viagem.
-    """
     viagem = controlar_viagem(
-        str(aluno.user.id),
-        str(viagem_futura_agendada_com_motorista.id),
-        {"acao": "INICIAR"},
+        str(gestor.user.id), str(viagem_futura_agendada_com_motorista.id), {"acao": "INICIAR"}
     )
 
     assert viagem.status == StatusViagem.EM_ANDAMENTO
+
+
+def test_controlar_viagem_aluno_403(_db, aluno, viagem_futura_agendada_com_motorista):
+    with pytest.raises(ForbiddenError):
+        controlar_viagem(
+            str(aluno.user.id),
+            str(viagem_futura_agendada_com_motorista.id),
+            {"acao": "INICIAR"},
+        )
+
+    _db.session.refresh(viagem_futura_agendada_com_motorista)
+    assert viagem_futura_agendada_com_motorista.status == StatusViagem.AGENDADA
 
 
 # ─── list_viagens_gestor ────────────────────────────────────────────────────
@@ -1001,20 +1022,14 @@ def test_cancelar_viagem_notifica_confirmados_e_muda_status(
     assert Notificacao.query.filter_by(usuario_id=aluno.user.id).count() == 1
 
 
-def test_cancelar_viagem_de_outra_prefeitura_passa(
+def test_cancelar_viagem_de_outra_prefeitura_404(
     _db, other_gestor, viagem_futura_agendada_com_motorista
 ):
-    """
-    CARACTERIZAÇÃO DE FALHA CONHECIDA (não corrigida aqui).
+    with pytest.raises(NotFoundError):
+        cancelar_viagem(str(other_gestor.user.id), str(viagem_futura_agendada_com_motorista.id))
 
-    O guarda só checa o papel GESTOR. Sem checagem de prefeitura, um gestor
-    cancela viagem de outra prefeitura.
-    """
-    resultado = cancelar_viagem(
-        str(other_gestor.user.id), str(viagem_futura_agendada_com_motorista.id)
-    )
-
-    assert resultado["message"] == "Viagem cancelada com sucesso"
+    _db.session.refresh(viagem_futura_agendada_com_motorista)
+    assert viagem_futura_agendada_com_motorista.status == StatusViagem.AGENDADA
 
 
 def test_cancelar_viagem_erro_no_commit_nao_vaza_texto_do_driver(
@@ -1148,24 +1163,36 @@ def test_atualizar_localizacao_ponto_proximo_notifica_e_marca_aviso(
     assert Notificacao.query.filter_by(usuario_id=aluno.user.id).count() == 1
 
 
-def test_atualizar_localizacao_motorista_alheio_atualiza_gps_de_viagem_de_outro(
-    _db, other_motorista, viagem_futura_iniciada_com_motorista
+def test_atualizar_localizacao_motorista_de_outra_viagem_403(
+    _db, prefeitura, viagem_futura_iniciada_com_motorista
 ):
-    """
-    CARACTERIZAÇÃO DE FALHA CONHECIDA (não corrigida aqui).
+    outro = _outro_motorista_da_prefeitura(_db, prefeitura)
 
-    A função checa apenas o papel MOTORISTA. Não compara
-    ``viagem.motorista_id`` com o chamador, então qualquer motorista de
-    qualquer prefeitura escreve o GPS de qualquer viagem em andamento.
-    """
-    atualizar_localizacao(
-        str(other_motorista.user.id),
-        str(viagem_futura_iniciada_com_motorista.id),
-        {"latitude": -10.0, "longitude": -40.0},
-    )
+    with pytest.raises(ForbiddenError):
+        atualizar_localizacao(
+            str(outro.id),
+            str(viagem_futura_iniciada_com_motorista.id),
+            {"latitude": -10.0, "longitude": -40.0},
+        )
 
     viagem = _db.session.get(Viagem, viagem_futura_iniciada_com_motorista.id)
-    assert float(viagem.motorista_lat) == -10.0
+    assert viagem.motorista_lat != -10.0
+
+
+def test_atualizar_localizacao_motorista_de_outra_prefeitura_404(
+    _db, other_motorista, viagem_futura_iniciada_com_motorista
+):
+    with pytest.raises(NotFoundError):
+        atualizar_localizacao(
+            str(other_motorista.user.id),
+            str(viagem_futura_iniciada_com_motorista.id),
+            {"latitude": -10.0, "longitude": -40.0},
+        )
+
+    assert (
+        TelemetriaViagem.query.filter_by(viagem_id=viagem_futura_iniciada_com_motorista.id).count()
+        == 0
+    )
 
 
 # ─── obter_localizacao_onibus ───────────────────────────────────────────────

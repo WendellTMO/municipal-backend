@@ -358,17 +358,26 @@ def test_resolver_ja_resolvida_400(_db, gestor, aluno):
     assert str(exc.value) == "Ocorrência já foi resolvida."
 
 
-def test_resolver_gestor_de_outra_prefeitura_passa(_db, other_gestor, aluno):
-    """
-    CARACTERIZAÇÃO DE FALHA CONHECIDA (não corrigida aqui).
-
-    O guarda só checa o papel GESTOR. Não existe checagem de prefeitura, então
-    um gestor resolve ocorrência de outra prefeitura, que ele nem consegue ver
-    pelo `listar`.
-    """
+def test_resolver_gestor_de_outra_prefeitura_404(_db, other_gestor, aluno):
     ocorrencia = _ocorrencia(_db, aluno.user.id)
 
-    resultado = OcorrenciaService.resolver(str(other_gestor.user.id), str(ocorrencia.id))
+    with pytest.raises(NotFoundError):
+        OcorrenciaService.resolver(str(other_gestor.user.id), str(ocorrencia.id))
+
+    _db.session.refresh(ocorrencia)
+    assert ocorrencia.status == StatusOcorrencia.ABERTA
+
+
+def test_resolver_gestor_da_prefeitura_da_viagem_resolve_ocorrencia_de_aluno_de_outra(
+    _db, gestor, other_aluno, viagem_futura_agendada_com_motorista
+):
+    # Multi-tenant: aluno de outra prefeitura numa viagem desta prefeitura abre ocorrência
+    # que o gestor da viagem precisa poder resolver.
+    ocorrencia = _ocorrencia(_db, other_aluno.user.id)
+    ocorrencia.viagem_id = viagem_futura_agendada_com_motorista.id
+    _db.session.commit()
+
+    resultado = OcorrenciaService.resolver(str(gestor.user.id), str(ocorrencia.id))
 
     assert resultado.status == StatusOcorrencia.RESOLVIDA
 

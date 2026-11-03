@@ -7,7 +7,7 @@ from app.models.viagem import AlunosConfirmados, Viagem
 from app.services import viagens_service
 
 
-def test_iniciar_viagem_notifica_apenas_confirmados(app, _db, prefeitura, aluno):
+def test_iniciar_viagem_notifica_apenas_confirmados(app, _db, prefeitura, aluno, horario_rota):
     with app.app_context():
         motorista = Motorista(
             prefeitura_id=prefeitura.id,
@@ -22,7 +22,10 @@ def test_iniciar_viagem_notifica_apenas_confirmados(app, _db, prefeitura, aluno)
         _db.session.flush()
 
         viagem = Viagem(
-            data=datetime.now(UTC).date(), motorista_id=motorista.id, status=StatusViagem.AGENDADA
+            data=datetime.now(UTC).date(),
+            motorista_id=motorista.id,
+            horario_rota_id=horario_rota.id,
+            status=StatusViagem.AGENDADA,
         )
         _db.session.add(viagem)
         _db.session.flush()

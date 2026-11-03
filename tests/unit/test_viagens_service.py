@@ -14,8 +14,9 @@ def test_atualizar_localizacao_dispara_notificacao(app):
         ):
 
             # 1. Arrange: Setup do Motorista e Viagem
-            mock_user = MagicMock(role=UserRole.MOTORISTA)
-            mock_viagem = MagicMock(status=StatusViagem.EM_ANDAMENTO)
+            mock_user = MagicMock(role=UserRole.MOTORISTA, prefeitura_id="P1")
+            mock_viagem = MagicMock(status=StatusViagem.EM_ANDAMENTO, motorista_id=mock_user.id)
+            mock_viagem.horario_rota.rota.prefeitura_id = "P1"
             mock_viagem.id = "123e4567-e89b-12d3-a456-426614174000"
             mock_viagem.localizacao_solicitada_em = None
             mock_db.session.get.side_effect = [mock_user, mock_viagem]
