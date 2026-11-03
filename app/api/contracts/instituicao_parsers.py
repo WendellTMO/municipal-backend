@@ -18,6 +18,22 @@ instituicao_list_parser.add_argument(
     help="Limite de resultados",
 )
 
+instituicao_busca_parser = reqparse.RequestParser()
+instituicao_busca_parser.add_argument(
+    "q",
+    type=str,
+    required=False,
+    help="Texto da busca: nome ou sigla, sem diferenciar acento nem maiúscula (máx. 100)",
+)
+instituicao_busca_parser.add_argument(
+    "limit",
+    type=int,
+    required=False,
+    default=20,
+    help="Quantidade de resultados (1 a 50, padrão 20)",
+)
+
 parsers = {
     "instituicao_list": instituicao_list_parser,
+    "instituicao_busca": instituicao_busca_parser,
 }

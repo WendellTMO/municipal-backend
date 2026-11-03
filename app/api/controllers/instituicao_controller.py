@@ -8,6 +8,8 @@ from app.api.contracts import instituicao_contract
 from app.api.contracts.instituicao_parsers import parsers
 from app.api.helpers import list_envelope
 from app.schemas.instituicao_schema import (
+    InstituicaoBuscaQuerySchema,
+    InstituicaoBuscaResponseSchema,
     InstituicaoCreateRequestSchema,
     InstituicaoListQuerySchema,
     InstituicaoListResponseSchema,
@@ -25,6 +27,8 @@ instituicao_create_request_schema = InstituicaoCreateRequestSchema()
 instituicao_response_schema = InstituicaoResponseSchema()
 instituicao_list_response_schema = InstituicaoListResponseSchema()
 instituicao_list_query_schema = InstituicaoListQuerySchema()
+instituicao_busca_query_schema = InstituicaoBuscaQuerySchema()
+instituicao_busca_response_schema = InstituicaoBuscaResponseSchema()
 
 
 @api.route("/public")
@@ -40,6 +44,20 @@ class InstituicaoPublicListResource(Resource):
             instituicao_list_response_schema.dump(list_envelope(instituicoes)),
             200,
         )
+
+
+@api.route("/busca")
+class InstituicaoBuscaResource(Resource):
+    @api.doc("buscar_instituicoes")
+    @api.expect(parsers["instituicao_busca"])
+    @api.response(200, "Success", models["instituicao_busca_response"])
+    @jwt_required()
+    def get(self) -> tuple[dict[str, Any], int]:
+        """Busca instituições da prefeitura do usuário, melhores resultados primeiro."""
+        user_id = get_jwt_identity()
+        filtros = instituicao_busca_query_schema.load(request.args.to_dict())
+        itens = instituicao_service.buscar(user_id, filtros["q"], filtros["limit"])
+        return instituicao_busca_response_schema.dump(list_envelope(itens)), 200
 
 
 @api.route("/")

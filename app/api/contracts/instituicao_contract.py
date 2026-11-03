@@ -49,7 +49,26 @@ def register_models(api):
         },
     )
 
+    instituicao_busca_item = api.model(
+        "InstituicaoBuscaItem",
+        {
+            "id": fields.String(description="UUID"),
+            "nome": fields.String(description="Nome"),
+            "sigla": fields.String(description="Sigla"),
+            "uf": fields.String(description="UF"),
+        },
+    )
+
+    instituicao_busca_response = api.model(
+        "InstituicaoBuscaResponse",
+        {
+            "items": fields.List(fields.Nested(instituicao_busca_item)),
+            "total": fields.Integer(description="Quantidade devolvida"),
+        },
+    )
+
     return {
+        "instituicao_busca_response": instituicao_busca_response,
         "instituicao_create_request": instituicao_create_request,
         "instituicao_response": instituicao_response,
         "instituicao_list_response": instituicao_list_response,

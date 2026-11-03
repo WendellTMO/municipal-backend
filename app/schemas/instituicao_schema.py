@@ -45,6 +45,27 @@ class InstituicaoListResponseSchema(BaseSchema):
     total = fields.Integer(required=True)
 
 
+class InstituicaoBuscaQuerySchema(BaseSchema):
+    """GET /instituicoes/busca?q=...&limit=..."""
+
+    q = fields.String(load_default="", validate=validate.Length(max=100))
+    limit = fields.Integer(load_default=20, validate=validate.Range(min=1, max=50))
+
+
+class InstituicaoBuscaItemSchema(BaseSchema):
+    """Só o que a lista de escolha precisa; não carrega ponto nem endereço."""
+
+    id = fields.String()
+    nome = fields.String()
+    sigla = fields.String(dump_default=None)
+    uf = fields.String(dump_default=None)
+
+
+class InstituicaoBuscaResponseSchema(BaseSchema):
+    items = fields.List(fields.Nested(InstituicaoBuscaItemSchema()), required=True)
+    total = fields.Integer(required=True)
+
+
 class InstituicaoListQuerySchema(BaseSchema):
     search = fields.String(required=False)
     limit = fields.Integer(required=False, dump_default=10)

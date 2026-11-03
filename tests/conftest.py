@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 from flask_jwt_extended import create_access_token
-from sqlalchemy import event
+from sqlalchemy import event, text
 
 from app import create_app
 from app.models.base import db
@@ -181,6 +181,10 @@ def app():
 def _db(app):
     with app.app_context():
         _exigir_banco_de_teste(db.engine)
+        # A busca de instituições usa estas extensões (a migração cria no banco real).
+        db.session.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+        db.session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        db.session.commit()
         db.create_all()
         yield db
         db.session.remove()
