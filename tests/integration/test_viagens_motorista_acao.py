@@ -43,3 +43,4 @@ def test_controlar_viagem_finalizar_success(motorista, viagem_futura_iniciada_co
 
     assert r.get_json()["status"] == "FINALIZADA"
     assert r.get_json()["horario_fim"] is not None
+    assert r.get_json()["km_real"] == 0.0  # sem telemetria, a distância é zero
