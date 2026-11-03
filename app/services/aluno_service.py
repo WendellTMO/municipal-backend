@@ -352,6 +352,14 @@ def get_me(user_id: str) -> Aluno:
     return aluno
 
 
+def _trocar_instituicao(aluno: Aluno, instituicao_id: Any) -> None:
+    """Só vale instituição já cadastrada na prefeitura do aluno (a prefeitura dele não muda)."""
+    instituicao = db.session.get(Instituicao, instituicao_id)
+    if instituicao is None or instituicao.prefeitura_id != aluno.prefeitura_id:
+        raise ValidationError("Instituição não encontrada.", details={"field": "instituicao_id"})
+    aluno.instituicao_id = instituicao.id
+
+
 def update_me(user_id: str, data: dict[str, Any]) -> Aluno:
     """
     Atualiza perfil do aluno.
@@ -367,6 +375,9 @@ def update_me(user_id: str, data: dict[str, Any]) -> Aluno:
         for field in _CAMPOS_PERFIL:
             if field in data:
                 setattr(aluno, field, data[field])
+
+        if data.get("instituicao_id"):
+            _trocar_instituicao(aluno, data["instituicao_id"])
 
         # O schema entrega None quando o campo não vem no payload: nada a mudar.
         if data.get("endereco_casa"):

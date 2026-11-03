@@ -61,6 +61,8 @@ class AlunoMeUpdateRequestSchema(BaseSchema):
     telefone = fields.String(allow_none=True, validate=validate_optional_phone)
 
     matricula = fields.String(allow_none=True, validate=validate_optional_string)
+    # Troca de instituição: só vale uma já cadastrada na prefeitura do aluno (ver update_me).
+    instituicao_id = fields.UUID()
     nome_responsavel = fields.String(allow_none=True, validate=validate_optional_string)
     cpf_responsavel = fields.String(allow_none=True, validate=validate_optional_cpf)
 

@@ -342,6 +342,37 @@ def test_update_me_atualiza_campos_simples(_db, aluno_ativo):
     assert atualizado.matricula == "999"
 
 
+def test_update_me_troca_para_instituicao_cadastrada_da_prefeitura(_db, aluno_ativo, instituicao):
+    atualizado = update_me(str(aluno_ativo.user.id), {"instituicao_id": instituicao.id})
+
+    assert atualizado.instituicao_id == instituicao.id
+
+
+def test_update_me_recusa_instituicao_de_outra_prefeitura(_db, aluno_ativo, other_prefeitura):
+    de_fora = Instituicao(
+        fonte="MANUAL",
+        codigo_externo="INST-FORA",
+        nome="Escola de Outra Prefeitura",
+        tipo=TipoInstituicao.ESCOLA_PUBLICA,
+        uf="PB",
+        prefeitura_id=other_prefeitura.id,
+    )
+    _db.session.add(de_fora)
+    _db.session.commit()
+
+    with pytest.raises(ValidationError):
+        update_me(str(aluno_ativo.user.id), {"instituicao_id": de_fora.id})
+
+    assert aluno_ativo.user.instituicao_id != de_fora.id
+
+
+def test_update_me_recusa_instituicao_que_nao_existe(_db, aluno_ativo):
+    import uuid
+
+    with pytest.raises(ValidationError):
+        update_me(str(aluno_ativo.user.id), {"instituicao_id": uuid.uuid4()})
+
+
 def test_update_me_ignora_campos_nao_listados(_db, aluno_ativo):
     """Only the 5 whitelisted fields are copied; ``email`` is silently ignored."""
     original = aluno_ativo.user.email
@@ -411,24 +442,18 @@ def test_update_me_pendencias_retorna_400(_db, aluno_pending):
     ]
 
 
-def test_update_me_nao_persiste_instituicao_id(_db, aluno_pending):
-    """CHARACTERIZATION OF A QUIRK (not fixed here).
-
-    ``instituicao_id`` satisfies the completeness check via ``data.get(...)``
-    but is NOT in the whitelist of copied fields, so signup completes with the
-    column still empty.
-    """
+def test_update_me_persiste_instituicao_id_e_completa_cadastro(_db, aluno_pending, instituicao):
     aluno_pending.user.matricula = "123"
     aluno_pending.user.instituicao_id = None
     _db.session.commit()
 
     atualizado = update_me(
         str(aluno_pending.user.id),
-        {"instituicao_id": "qualquer-coisa", "endereco_casa": dict(ENDERECO)},
+        {"instituicao_id": instituicao.id, "endereco_casa": dict(ENDERECO)},
     )
 
     assert atualizado.status == UserStatus.ACTIVE
-    assert atualizado.instituicao_id is None
+    assert atualizado.instituicao_id == instituicao.id
 
 
 def test_update_me_menor_pendente_nao_completa_signup(_db, aluno_menor):

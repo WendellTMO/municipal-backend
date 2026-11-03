@@ -24,6 +24,7 @@ parameters:
         matricula: {type: string}
         nome_responsavel: {type: string}
         cpf_responsavel: {type: string}
+        instituicao_id: {type: string, description: "Troca a instituição. Precisa ser uma instituição cadastrada na prefeitura do aluno; senão 400."}
         endereco:
           type: object
           required: [logradouro, numero, bairro, cidade, estado]
