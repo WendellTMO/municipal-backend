@@ -859,6 +859,42 @@ def test_controlar_viagem_iniciar_notifica_apenas_confirmados(
     assert Notificacao.query.filter_by(usuario_id=other_aluno.user.id).count() == 0
 
 
+def test_controlar_viagem_iniciar_cancelada_de_hoje_desfaz_o_cancelamento(
+    _db, motorista, aluno, other_aluno, rota, rota_aluno, horario_rota
+):
+    _db.session.add(RotaAluno(rota_id=rota.id, aluno_id=other_aluno.user.id))
+    viagem = _viagem(
+        _db,
+        horario_rota,
+        date.today(),
+        status=StatusViagem.CANCELADA,
+        motorista_id=motorista.user.id,
+        motivo_cancelamento="problema no ônibus",
+    )
+
+    resultado = controlar_viagem(str(motorista.user.id), str(viagem.id), {"acao": "INICIAR"})
+
+    assert resultado.status == StatusViagem.EM_ANDAMENTO
+    assert resultado.motivo_cancelamento is None
+    avisos = Notificacao.query.filter_by(titulo="Viagem retomada").all()
+    assert {str(a.usuario_id) for a in avisos} == {str(aluno.user.id), str(other_aluno.user.id)}
+
+
+def test_controlar_viagem_iniciar_cancelada_de_outro_dia_400(_db, motorista, horario_rota):
+    viagem = _viagem(
+        _db,
+        horario_rota,
+        date.today() + timedelta(days=1),
+        status=StatusViagem.CANCELADA,
+        motorista_id=motorista.user.id,
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        controlar_viagem(str(motorista.user.id), str(viagem.id), {"acao": "INICIAR"})
+
+    assert exc.value.message == "Só dá para retomar uma viagem cancelada no próprio dia"
+
+
 def test_controlar_viagem_iniciar_com_status_errado_400(
     _db, motorista, viagem_futura_iniciada_com_motorista
 ):

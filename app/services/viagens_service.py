@@ -533,12 +533,27 @@ def controlar_viagem(user_id: str, viagem_id: str, data: dict[str, Any]) -> Viag
 
     with transactional():
         if acao == "INICIAR":
-            if viagem.status != StatusViagem.AGENDADA:
+            # O ônibus pode ser consertado a tempo: iniciar a viagem cancelada de hoje desfaz o
+            # cancelamento. Cancelada de outro dia continua recusada.
+            era_cancelada = viagem.status == StatusViagem.CANCELADA
+            if era_cancelada and viagem.data != date.today():
+                raise ValidationError("Só dá para retomar uma viagem cancelada no próprio dia")
+            if viagem.status not in (StatusViagem.AGENDADA, StatusViagem.CANCELADA):
                 raise ValidationError(
                     f"Não é possível iniciar viagem com status {viagem.status.name}"
                 )
             viagem.status = StatusViagem.EM_ANDAMENTO
             viagem.inicio_real = datetime.now(UTC)
+
+            if era_cancelada:
+                viagem.motivo_cancelamento = None
+                hora = viagem.horario_rota.horario_saida.strftime("%H:%M")
+                for aluno_id in _alunos_da_viagem_a_avisar(viagem):
+                    NotificacaoService._criar_notificacao_interna(
+                        usuario_id=aluno_id,
+                        titulo="Viagem retomada",
+                        mensagem=f"A viagem de hoje às {hora} voltou a acontecer e o ônibus já saiu.",
+                    )
 
             NotificacaoService.notificar_alunos_viagem_iniciada(viagem_id=viagem_id)
 
@@ -792,6 +807,17 @@ def registrar_chegadas(user_id: str, viagem_id: str, eventos: list[dict[str, Any
     return {"aceitos": aceitos, "rejeitados": rejeitados}
 
 
+def _alunos_da_viagem_a_avisar(viagem: Viagem) -> list[Any]:
+    """Todos os alunos inscritos na rota da viagem, mais quem confirmou e já saiu da rota."""
+    ids: list[Any] = []
+    for inscricao in RotaAluno.query.filter_by(rota_id=viagem.horario_rota.rota_id).all():
+        ids.append(inscricao.aluno_id)
+    for conf in AlunosConfirmados.query.filter_by(viagem_id=viagem.id, confirmacao=True).all():
+        if conf.aluno_id not in ids:
+            ids.append(conf.aluno_id)
+    return ids
+
+
 def cancelar_viagem(user_id: str, viagem_id: str, motivo: str | None = None) -> dict[str, Any]:
     """Cancela uma viagem. Gestor cancela qualquer uma da prefeitura; motorista, só a sua.
 
@@ -817,13 +843,7 @@ def cancelar_viagem(user_id: str, viagem_id: str, motivo: str | None = None) -> 
         viagem.status = StatusViagem.CANCELADA
         viagem.motivo_cancelamento = motivo or None
 
-        alunos_a_avisar: list[Any] = []
-        for inscricao in RotaAluno.query.filter_by(rota_id=viagem.horario_rota.rota_id).all():
-            alunos_a_avisar.append(inscricao.aluno_id)
-        # Quem confirmou presença mas já saiu da rota também recebe o aviso.
-        for conf in AlunosConfirmados.query.filter_by(viagem_id=viagem.id, confirmacao=True).all():
-            if conf.aluno_id not in alunos_a_avisar:
-                alunos_a_avisar.append(conf.aluno_id)
+        alunos_a_avisar = _alunos_da_viagem_a_avisar(viagem)
         data_formatada = viagem.data.strftime("%d/%m/%Y")
         hora_formatada = viagem.horario_rota.horario_saida.strftime("%H:%M")
         quem = "pelo motorista" if user.role == UserRole.MOTORISTA else "pela prefeitura"
