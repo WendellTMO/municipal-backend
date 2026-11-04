@@ -326,11 +326,60 @@ def confirmar_presenca_aluno(
                 for coluna, ponto_id in escolhas.items():
                     setattr(inscricao, coluna, ponto_id)
         else:
+            estava_confirmado = bool(registro.confirmacao)
+            embarque_que_tinha = registro.ponto_embarque_id
+            destino_que_tinha = registro.ponto_destino_id
             registro.confirmacao = False
             registro.ponto_embarque_id = None
             registro.ponto_destino_id = None
+            if estava_confirmado:
+                _avisar_motorista_do_cancelamento(
+                    viagem, aluno.usuario_id, embarque_que_tinha, destino_que_tinha
+                )
 
         return registro
+
+
+def _avisar_motorista_do_cancelamento(
+    viagem: Viagem, aluno_id: Any, embarque_id: Any, destino_id: Any
+) -> None:
+    """Avisa o motorista que um aluno confirmado cancelou. Se era o único a usar um ponto de
+    embarque ou desembarque, diz que a parada pode ser pulada. Só vale antes de a viagem acabar."""
+    if viagem.motorista_id is None:
+        return
+    if viagem.status not in (StatusViagem.AGENDADA, StatusViagem.EM_ANDAMENTO):
+        return
+
+    usuario = db.session.get(User, aluno_id)
+    nome = usuario.nome if usuario else "Um aluno"
+    hora = viagem.horario_rota.horario_saida.strftime("%H:%M")
+    mensagem = f"{nome} cancelou a presença na viagem das {hora}."
+
+    restantes = AlunosConfirmados.query.filter(
+        AlunosConfirmados.viagem_id == viagem.id,
+        AlunosConfirmados.confirmacao.is_(True),
+        AlunosConfirmados.aluno_id != aluno_id,
+    ).all()
+    ainda_usados = set()
+    for conf in restantes:
+        ainda_usados.add(conf.ponto_embarque_id)
+        ainda_usados.add(conf.ponto_destino_id)
+
+    sem_ninguem: list[str] = []
+    for ponto_id in (embarque_id, destino_id):
+        if ponto_id is None or ponto_id in ainda_usados:
+            continue
+        ponto = db.session.get(Ponto, ponto_id)
+        if ponto and ponto.apelido not in sem_ninguem:
+            sem_ninguem.append(ponto.apelido)
+    if sem_ninguem:
+        mensagem += f" Ninguém mais usa {', '.join(sem_ninguem)}: a parada pode ser pulada."
+
+    NotificacaoService._criar_notificacao_interna(
+        usuario_id=viagem.motorista_id,
+        titulo="Aluno cancelou a presença",
+        mensagem=mensagem,
+    )
 
 
 def listar_pontos_embarque(user_id: str, viagem_id: str) -> list[dict]:

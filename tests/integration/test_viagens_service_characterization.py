@@ -514,6 +514,37 @@ def test_confirmar_presenca_desconfirma_limpa_pontos(
     assert registro.ponto_destino_id is None
 
 
+def test_cancelar_presenca_avisa_o_motorista_e_diz_quando_a_parada_fica_sem_ninguem(
+    _db, aluno, other_aluno, prefeitura, motorista, viagem_futura_agendada_com_motorista
+):
+    sozinho = _ponto(_db, prefeitura.id, -23.5, -46.6, "Escola Sul")
+    comum = _ponto(_db, prefeitura.id, -23.6, -46.7, "Praça")
+    viagem = viagem_futura_agendada_com_motorista
+    _confirmacao(
+        _db, viagem, aluno.user.id, confirmacao=True, ponto_embarque_id=comum.id, ponto_destino_id=sozinho.id
+    )
+    _confirmacao(
+        _db, viagem, other_aluno.user.id, confirmacao=True, ponto_embarque_id=comum.id, ponto_destino_id=comum.id
+    )
+
+    confirmar_presenca_aluno(str(aluno.user.id), str(viagem.id), {"confirmacao": False})
+
+    aviso = Notificacao.query.filter_by(usuario_id=motorista.user.id).one()
+    assert aviso.titulo == "Aluno cancelou a presença"
+    assert "Ninguém mais usa Escola Sul" in aviso.mensagem
+    assert "Praça" not in aviso.mensagem
+
+
+def test_cancelar_presenca_de_quem_nao_tinha_confirmado_nao_avisa_o_motorista(
+    _db, aluno, rota_aluno, motorista, viagem_futura_agendada_com_motorista
+):
+    confirmar_presenca_aluno(
+        str(aluno.user.id), str(viagem_futura_agendada_com_motorista.id), {"confirmacao": False}
+    )
+
+    assert Notificacao.query.filter_by(usuario_id=motorista.user.id).count() == 0
+
+
 def test_confirmar_presenca_sem_chave_confirmacao_estoura_key_error(
     _db, aluno, rota_aluno, viagem_futura_agendada_com_motorista
 ):
