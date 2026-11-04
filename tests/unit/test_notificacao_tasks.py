@@ -1,5 +1,6 @@
 """Testes unitários para as tarefas de notificação em background."""
 
+from datetime import date, datetime, time
 from unittest.mock import MagicMock, patch
 
 from app.tasks.notificacao_tasks import verificar_viagens_24h
@@ -21,6 +22,8 @@ def test_verificar_viagens_24h(app):
 
             mock_viagem = MagicMock()
             mock_viagem.id = "viagem-123"
+            mock_viagem.data = date(2026, 11, 4)
+            mock_viagem.horario_rota.horario_saida = time(20, 0)
             mock_query.filter.return_value.all.return_value = [mock_viagem]
 
             mock_inscricao = MagicMock()
@@ -31,7 +34,7 @@ def test_verificar_viagens_24h(app):
             mock_aluno.id = "aluno-123"
             mock_db_get.return_value = mock_aluno
 
-            verificar_viagens_24h()
+            verificar_viagens_24h(agora=datetime(2026, 11, 4, 12, 0))
 
             assert (
                 mock_notificacao_service.mock_calls
@@ -55,6 +58,8 @@ def test_verificar_viagens_10min(app):
 
             mock_viagem = MagicMock()
             mock_viagem.id = "viagem-123"
+            mock_viagem.data = date(2026, 11, 4)
+            mock_viagem.horario_rota.horario_saida = time(12, 5)
             mock_query.filter.return_value.all.return_value = [mock_viagem]
 
             mock_confirmado = MagicMock()
@@ -65,7 +70,7 @@ def test_verificar_viagens_10min(app):
             mock_aluno.instituicao.nome = "Universidade Teste"
             mock_db_get.return_value = mock_aluno
 
-            verificar_viagens_10min()
+            verificar_viagens_10min(agora=datetime(2026, 11, 4, 12, 0))
 
             assert (
                 mock_notificacao_service.mock_calls

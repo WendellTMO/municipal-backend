@@ -1,6 +1,6 @@
 """Testes de integração para as tarefas agendadas (cron jobs) no banco real."""
 
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from unittest.mock import MagicMock, patch
 
 from app.models.enum import SentidoViagem, StatusViagem, UserRole
@@ -64,7 +64,8 @@ def test_integracao_job_24h_banco_real(app, _db, prefeitura):
             mock_aluno.receber_notificacoes = True
             mock_get.return_value = mock_aluno
 
-            verificar_viagens_24h()
+            # Saída amanhã às 6h30: com 9 horas de antecedência cai dentro da janela de 10 horas.
+            verificar_viagens_24h(agora=datetime.combine(amanha, time(6, 30)) - timedelta(hours=9))
 
         _db.session.refresh(viagem)
         assert viagem.aviso_24h_enviado is True, "A task falhou em atualizar a flag no banco"

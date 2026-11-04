@@ -40,7 +40,8 @@ def init_scheduler(app: Flask, scheduler: APScheduler):
             id="job_24h",
             func=verificar_viagens_24h,
             trigger="interval",
-            minutes=60,
+            # Lembrete de 10 horas: de 10 em 10 minutos ele sai perto da hora certa.
+            minutes=10,
             replace_existing=True,
         )
 
