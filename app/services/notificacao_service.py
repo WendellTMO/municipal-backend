@@ -188,7 +188,8 @@ class NotificacaoService:
 
     @staticmethod
     def notificar_alunos_viagem_iniciada(viagem_id: str) -> None:
-        """Busca os alunos confirmados na viagem e dispara o aviso de partida."""
+        """Avisa a partida: quem confirmou acompanha o trajeto, os demais alunos da rota são
+        convidados a confirmar a presença."""
         # O `except` largo é deliberado: quem chama é `controlar_viagem`, e uma
         # falha de notificação não pode impedir a viagem de iniciar.
         try:
@@ -197,12 +198,33 @@ class NotificacaoService:
                     viagem_id=viagem_id, confirmacao=True
                 ).all()
 
+                ja_avisados = set()
                 for conf in confirmados:
+                    ja_avisados.add(conf.aluno_id)
                     NotificacaoService._criar_notificacao_interna(
                         usuario_id=conf.aluno_id,
                         titulo="🚌 Viagem Iniciada!",
                         mensagem="O motorista acabou de iniciar a rota. Acompanhe o trajeto no aplicativo!",
                     )
+
+                viagem = db.session.get(Viagem, viagem_id)
+                if viagem is not None and viagem.horario_rota is not None:
+                    hora = viagem.horario_rota.horario_saida.strftime("%H:%M")
+                    inscricoes = RotaAluno.query.filter_by(rota_id=viagem.horario_rota.rota_id).all()
+                    for inscricao in inscricoes:
+                        if inscricao.aluno_id in ja_avisados:
+                            continue
+                        aluno = db.session.get(User, inscricao.aluno_id)
+                        if not aluno or not getattr(aluno, "receber_notificacoes", True):
+                            continue
+                        NotificacaoService._criar_notificacao_interna(
+                            usuario_id=inscricao.aluno_id,
+                            titulo="🚌 O ônibus saiu",
+                            mensagem=(
+                                f"A viagem das {hora} começou. "
+                                "Confirme a sua presença para acompanhar o ônibus no mapa."
+                            ),
+                        )
         except Exception as e:
             logger.error(
                 f"Falha ao orquestrar notificações de início da viagem {viagem_id}: {str(e)}"

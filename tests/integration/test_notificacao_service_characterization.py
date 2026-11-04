@@ -531,6 +531,23 @@ def test_viagem_iniciada_notifica_so_os_confirmados(
     assert _titulos_de(other_aluno.user.id) == []
 
 
+def test_viagem_iniciada_convida_os_inscritos_que_nao_confirmaram(
+    _db, aluno, other_aluno, rota, rota_aluno, viagem_futura_iniciada_com_motorista
+):
+    _db.session.add(RotaAluno(rota_id=rota.id, aluno_id=other_aluno.user.id))
+    _db.session.commit()
+    _confirmacao(_db, viagem_futura_iniciada_com_motorista.id, aluno.user.id, True)
+
+    NotificacaoService.notificar_alunos_viagem_iniciada(
+        str(viagem_futura_iniciada_com_motorista.id)
+    )
+
+    assert _titulos_de(aluno.user.id) == ["🚌 Viagem Iniciada!"]
+    assert _titulos_de(other_aluno.user.id) == ["🚌 O ônibus saiu"]
+    convite = Notificacao.query.filter_by(usuario_id=other_aluno.user.id).one()
+    assert "Confirme a sua presença" in convite.mensagem
+
+
 def test_viagem_iniciada_persiste_as_notificacoes(_db, aluno, viagem_futura_iniciada_com_motorista):
     # O rollback depois da chamada separa commit de objeto só pendente na
     # sessão: sem commit, o autoflush faria a query passar do mesmo jeito.
