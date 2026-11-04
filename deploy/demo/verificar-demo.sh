@@ -26,9 +26,12 @@ for caminho in / /landing-page/ /v1/cep/58429900 /app-version.json; do
 done
 
 # O site chama a API certa. Já foi ao ar chamando localhost por causa do .env do desenvolvedor.
-BUNDLE=$(curl -s "$URL/bundle.js")
-if echo "$BUNDLE" | grep -q "$URL"; then ok "bundle.js contém $URL"; else falha "bundle.js não contém $URL"; fi
-if echo "$BUNDLE" | grep -qE "localhost:(3000|3001)"; then falha "bundle.js aponta para localhost"; else ok "bundle.js sem localhost de desenvolvimento"; fi
+# O nome do bundle tem hash (main.1a2b3c4d.js): vem do index.html, que é sempre revalidado.
+ARQ=$(curl -s "$URL/" | grep -o 'src="/[^"]*\.js"' | head -1 | sed 's/^src="//; s/"$//')
+if [ -z "$ARQ" ]; then falha "index.html sem script do bundle"; ARQ=/bundle.js; fi
+BUNDLE=$(curl -s "$URL$ARQ")
+if echo "$BUNDLE" | grep -q "$URL"; then ok "$ARQ contém $URL"; else falha "$ARQ não contém $URL"; fi
+if echo "$BUNDLE" | grep -qE "localhost:(3000|3001)"; then falha "$ARQ aponta para localhost"; else ok "$ARQ sem localhost de desenvolvimento"; fi
 
 # Login: conta certa entra, senha errada é recusada com 401 (não some como erro de rede)
 corpo=$(curl -s -X POST "$URL/v1/auth/login" -H 'Content-Type: application/json' \
@@ -39,7 +42,9 @@ c=$(codigo -X POST "$URL/v1/auth/login" -H 'Content-Type: application/json' \
 if [ "$c" = "401" ]; then ok "senha errada responde 401"; else falha "senha errada respondeu $c"; fi
 
 # Compressão e cache
-if curl -sI -H 'Accept-Encoding: gzip' "$URL/bundle.js" | grep -qi "content-encoding: gzip"; then ok "bundle.js vem comprimido"; else falha "bundle.js sem gzip"; fi
+if curl -sI -H 'Accept-Encoding: gzip' "$URL$ARQ" | grep -qi "content-encoding: gzip"; then ok "$ARQ vem comprimido"; else falha "$ARQ sem gzip"; fi
+if curl -sI "$URL$ARQ" | grep -qi "cache-control:.*immutable"; then ok "$ARQ guardado em cache por um ano"; else falha "$ARQ sem cache longo"; fi
+if curl -sI "$URL/" | grep -qi "cache-control:.*no-cache"; then ok "index.html sempre revalidado"; else falha "index.html pode ficar em cache"; fi
 if curl -sI "$URL/app-version.json" | grep -qi "cache-control:.*no-cache"; then ok "app-version.json sem cache"; else falha "app-version.json com cache"; fi
 
 # APK: o hash do arquivo servido bate com o app-version.json
