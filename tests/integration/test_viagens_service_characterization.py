@@ -1345,6 +1345,21 @@ def test_obter_localizacao_motorista_da_viagem_recebe_gps(
     assert resultado["atualizado_em"] is not None
 
 
+def test_obter_localizacao_lista_so_as_paradas_ja_visitadas(
+    _db, motorista, prefeitura, viagem_futura_iniciada_com_motorista
+):
+    visitado = _ponto(_db, prefeitura.id, -23.55, -46.63, "Ja passou")
+    a_visitar = _ponto(_db, prefeitura.id, -23.56, -46.64, "Ainda nao")
+    viagem_id = viagem_futura_iniciada_com_motorista.id
+    _db.session.add(ViagemPonto(viagem_id=viagem_id, ponto_id=visitado.id, ordem=1, visitado=True))
+    _db.session.add(ViagemPonto(viagem_id=viagem_id, ponto_id=a_visitar.id, ordem=2, visitado=False))
+    _db.session.commit()
+
+    resultado = obter_localizacao_onibus(str(motorista.user.id), str(viagem_id))
+
+    assert resultado["pontos_visitados"] == [str(visitado.id)]
+
+
 def test_obter_localizacao_sem_gps_devolve_nulos(
     _db, motorista, viagem_futura_iniciada_com_motorista
 ):
@@ -1352,7 +1367,12 @@ def test_obter_localizacao_sem_gps_devolve_nulos(
         str(motorista.user.id), str(viagem_futura_iniciada_com_motorista.id)
     )
 
-    assert resultado == {"latitude": None, "longitude": None, "atualizado_em": None}
+    assert resultado == {
+        "latitude": None,
+        "longitude": None,
+        "atualizado_em": None,
+        "pontos_visitados": [],
+    }
 
 
 def test_obter_localizacao_motorista_de_outra_viagem_403(

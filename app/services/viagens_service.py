@@ -1048,12 +1048,20 @@ def obter_localizacao_onibus(user_id: str, viagem_id: str) -> dict:
         if not eram_observadores:
             _pedir_localizacao_ao_motorista(viagem)
 
+    # Paradas em que o motorista já chegou (confirmadas por ele ou detectadas): o app do aluno usa
+    # isto para saber qual é a próxima parada, sem pedir outra rota.
+    pontos_visitados: list[str] = []
+    for parada in viagem.pontos_visitados:
+        if parada.visitado:
+            pontos_visitados.append(str(parada.ponto_id))
+
     return {
         "latitude": float(viagem.motorista_lat) if viagem.motorista_lat is not None else None,
         "longitude": float(viagem.motorista_lon) if viagem.motorista_lon is not None else None,
         "atualizado_em": (
             viagem.motorista_gps_hora.isoformat() if viagem.motorista_gps_hora else None
         ),
+        "pontos_visitados": pontos_visitados,
     }
 
 
