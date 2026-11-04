@@ -27,7 +27,6 @@ fi
 # Copia sem apagar buska.apk, buska-anterior.apk, app-version.json nem a landing page.
 rsync -rt "$COPIA/dist/" "$VM:~/web-new/"
 ssh "$VM" 'sudo rsync -rt --no-owner --no-group ~/web-new/ /var/www/buska-app/'
-# Bundles com hash se acumulam a cada publicação; apaga os de mais de 7 dias (o index.html usa o novo).
-ssh "$VM" 'sudo find /var/www/buska-app -maxdepth 1 -type f \( -name "*.js" -o -name "*.js.LICENSE.txt" \) -mtime +7 -delete'
+# Bundles com hash antigos ficam na VM (cerca de 1,3 MB por publicação). Limpe à mão quando precisar.
 echo "Web publicado em $API_URL"
 URL="$API_URL" "$(dirname "${BASH_SOURCE[0]}")/verificar-demo.sh"
