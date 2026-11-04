@@ -38,6 +38,22 @@ def test_feedback_sucesso_grava_usuario_e_prefeitura_do_token(aluno, prefeitura)
 
 
 @pytest.mark.integration
+def test_feedback_grava_aparelho_e_versao_do_sistema(aluno):
+    r = _post(aluno.client, plataforma="android", dispositivo="samsung SM-S911B", versao_so="Android 14 (API 34)")
+    assert r.status_code == 201, r.get_data(as_text=True)
+
+    row = db.session.get(Feedback, r.get_json()["id"])
+    assert row.dispositivo == "samsung SM-S911B"
+    assert row.versao_so == "Android 14 (API 34)"
+
+
+@pytest.mark.integration
+def test_feedback_recusa_aparelho_longo_demais(aluno):
+    r = _post(aluno.client, dispositivo="x" * 101)
+    assert r.status_code == 400
+
+
+@pytest.mark.integration
 def test_feedback_campos_opcionais_ausentes_ou_nulos_viram_null(aluno):
     r = _post(aluno.client, tipo="SUGESTAO", tela=None)
     assert r.status_code == 201, r.get_data(as_text=True)
@@ -46,6 +62,8 @@ def test_feedback_campos_opcionais_ausentes_ou_nulos_viram_null(aluno):
     assert row.tela is None
     assert row.versao_app is None
     assert row.plataforma is None
+    assert row.dispositivo is None
+    assert row.versao_so is None
 
 
 @pytest.mark.integration

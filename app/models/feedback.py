@@ -30,5 +30,8 @@ class Feedback(db.Model):
     versao_app = db.Column(db.String(30), nullable=True)
     plataforma = db.Column(db.String(20), nullable=True)
     user_agent = db.Column(db.String(300), nullable=True)
+    # Modelo do aparelho e versão do sistema: o user_agent do app nativo é só "okhttp".
+    dispositivo = db.Column(db.String(100), nullable=True)
+    versao_so = db.Column(db.String(40), nullable=True)
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())

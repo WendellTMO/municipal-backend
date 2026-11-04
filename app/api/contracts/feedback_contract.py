@@ -12,6 +12,8 @@ def register_models(api):
             "tela": fields.String(max_length=100, description="Tela onde o relato foi aberto"),
             "versao_app": fields.String(max_length=30),
             "plataforma": fields.String(enum=["android", "ios", "web"]),
+            "dispositivo": fields.String(max_length=100, description="Modelo do aparelho ou navegador"),
+            "versao_so": fields.String(max_length=40, description="Versão do sistema, ex.: Android 14"),
         },
     )
 

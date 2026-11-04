@@ -26,6 +26,8 @@ def create_feedback(user_id: str, payload: dict[str, Any], user_agent: str | Non
             versao_app=payload.get("versao_app"),
             plataforma=payload.get("plataforma"),
             user_agent=user_agent,
+            dispositivo=payload.get("dispositivo"),
+            versao_so=payload.get("versao_so"),
         )
         db.session.add(feedback)
         db.session.flush()

@@ -13,3 +13,5 @@ class FeedbackCreateRequestSchema(BaseSchema):
         allow_none=True,
         validate=validate.OneOf(["android", "ios", "web"]),
     )
+    dispositivo = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=100))
+    versao_so = fields.String(load_default=None, allow_none=True, validate=validate.Length(max=40))
