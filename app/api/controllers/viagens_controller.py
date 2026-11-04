@@ -16,6 +16,7 @@ from app.schemas.viagem_schema import (
     ViagemAcaoRequestSchema,
     ViagemAgendaAlunoListResponseSchema,
     ViagemAlunoConfirmacaoResponseSchema,
+    ViagemCancelarRequestSchema,
     ViagemChegadasRequestSchema,
     ViagemConfirmacaoRequestSchema,
     ViagemCreateRequestSchema,
@@ -45,6 +46,7 @@ viagem_confirmacao_request_schema = ViagemConfirmacaoRequestSchema()
 viagem_acao_request_schema = ViagemAcaoRequestSchema()
 viagem_ponto_create_request_schema = ViagemPontoCreateRequestSchema()
 viagem_chegadas_request_schema = ViagemChegadasRequestSchema()
+viagem_cancelar_request_schema = ViagemCancelarRequestSchema()
 
 viagem_list_query_schema = ViagemListQuerySchema()
 
@@ -207,9 +209,10 @@ class ViagemCancelarResource(Resource):
     @api.response(200, "Trip cancelled successfully")
     @jwt_required()
     def put(self, id: str) -> tuple[dict[str, Any], int]:
-        """Cancela uma viagem agendada e notifica alunos (Gestor)"""
+        """Cancela uma viagem agendada e notifica os envolvidos (Gestor ou o Motorista da viagem)"""
         user_id = get_jwt_identity()
-        result = viagens_service.cancelar_viagem(user_id, id)
+        payload = viagem_cancelar_request_schema.load(request.get_json(silent=True) or {})
+        result = viagens_service.cancelar_viagem(user_id, id, payload["motivo"])
         return result, 200
 
 

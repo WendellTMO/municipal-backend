@@ -147,6 +147,12 @@ class ViagemChegadasRequestSchema(BaseSchema):
     )
 
 
+class ViagemCancelarRequestSchema(BaseSchema):
+    """PUT /viagens/<id>/cancelar: o motivo é opcional."""
+
+    motivo = fields.String(load_default=None, allow_none=True, validate=Length(max=200))
+
+
 class ViagemListQuerySchema(BaseSchema):
     """GET /viagens?data_inicio=...&status=..."""
 

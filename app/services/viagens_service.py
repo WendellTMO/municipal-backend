@@ -787,16 +787,22 @@ def registrar_chegadas(user_id: str, viagem_id: str, eventos: list[dict[str, Any
     return {"aceitos": aceitos, "rejeitados": rejeitados}
 
 
-def cancelar_viagem(user_id: str, viagem_id: str) -> dict[str, Any]:
-    """Cancela uma viagem e notifica alunos confirmados"""
+def cancelar_viagem(user_id: str, viagem_id: str, motivo: str | None = None) -> dict[str, Any]:
+    """Cancela uma viagem. Gestor cancela qualquer uma da prefeitura; motorista, só a sua.
+
+    Os alunos confirmados são avisados. Quem não cancelou também é avisado: o motorista
+    quando o gestor cancela, e os gestores da prefeitura quando o motorista cancela.
+    """
     user = db.session.get(User, user_id)
-    if not user or user.role != UserRole.GESTOR:
-        raise ForbiddenError("Apenas gestores podem cancelar viagens")
+    if not user or user.role not in (UserRole.GESTOR, UserRole.MOTORISTA):
+        raise ForbiddenError("Apenas gestores e motoristas podem cancelar viagens")
 
     viagem = db.session.get(Viagem, viagem_id)
     if not viagem:
         raise NotFoundError("Viagem não encontrada")
     _exigir_viagem_da_prefeitura(user, viagem)
+    if user.role == UserRole.MOTORISTA and viagem.motorista_id != user.id:
+        raise ForbiddenError("Esta viagem não pertence a você")
 
     if viagem.status in (StatusViagem.FINALIZADA, StatusViagem.CANCELADA):
         raise ValidationError(f"Não é possível cancelar uma viagem com status {viagem.status.name}")
@@ -806,13 +812,40 @@ def cancelar_viagem(user_id: str, viagem_id: str) -> dict[str, Any]:
 
         confirmados = AlunosConfirmados.query.filter_by(viagem_id=viagem.id, confirmacao=True).all()
         data_formatada = viagem.data.strftime("%d/%m/%Y")
+        hora_formatada = viagem.horario_rota.horario_saida.strftime("%H:%M")
+        quem = "pelo motorista" if user.role == UserRole.MOTORISTA else "pela prefeitura"
+        sufixo_motivo = f" Motivo: {motivo}." if motivo else ""
 
         for conf in confirmados:
             NotificacaoService._criar_notificacao_interna(
                 usuario_id=conf.aluno_id,
                 titulo="Viagem Cancelada",
-                mensagem=f"Atenção! A viagem da rota agendada para o dia {data_formatada} foi cancelada pela prefeitura.",
+                mensagem=(
+                    f"Atenção! A viagem da rota agendada para o dia {data_formatada} "
+                    f"foi cancelada {quem}.{sufixo_motivo}"
+                ),
             )
+
+        texto_aviso = (
+            f"A viagem de {data_formatada} às {hora_formatada} foi cancelada {quem}.{sufixo_motivo}"
+        )
+        if user.role == UserRole.GESTOR:
+            if viagem.motorista_id:
+                NotificacaoService._criar_notificacao_interna(
+                    usuario_id=str(viagem.motorista_id),
+                    titulo="Viagem Cancelada",
+                    mensagem=texto_aviso,
+                )
+        else:
+            gestores = User.query.filter_by(
+                prefeitura_id=user.prefeitura_id, role=UserRole.GESTOR
+            ).all()
+            for gestor in gestores:
+                NotificacaoService._criar_notificacao_interna(
+                    usuario_id=str(gestor.id),
+                    titulo="Viagem Cancelada",
+                    mensagem=f"{user.nome} cancelou: {texto_aviso}",
+                )
 
     audit_logger.log_user_action(
         action="cancelar_viagem", user_id=user_id, resource_type="viagem", resource_id=viagem_id

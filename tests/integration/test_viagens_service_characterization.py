@@ -976,11 +976,53 @@ def test_list_viagens_gestor_filtra_por_motorista_e_rota(
 # ─── cancelar_viagem ────────────────────────────────────────────────────────
 
 
-def test_cancelar_viagem_recusa_motorista(_db, motorista, viagem_futura_agendada_com_motorista):
+def test_cancelar_viagem_recusa_aluno(_db, aluno, viagem_futura_agendada_com_motorista):
     with pytest.raises(ForbiddenError) as exc:
-        cancelar_viagem(str(motorista.user.id), str(viagem_futura_agendada_com_motorista.id))
+        cancelar_viagem(str(aluno.user.id), str(viagem_futura_agendada_com_motorista.id))
 
-    assert exc.value.message == "Apenas gestores podem cancelar viagens"
+    assert exc.value.message == "Apenas gestores e motoristas podem cancelar viagens"
+
+
+def test_cancelar_viagem_recusa_motorista_de_outra_viagem(_db, motorista, horario_rota):
+    viagem_sem_dono = _viagem(_db, horario_rota, date.today() + timedelta(days=3))
+
+    with pytest.raises(ForbiddenError) as exc:
+        cancelar_viagem(str(motorista.user.id), str(viagem_sem_dono.id))
+
+    assert exc.value.message == "Esta viagem não pertence a você"
+
+
+def test_cancelar_viagem_motorista_cancela_a_sua_e_avisa_alunos_e_gestor(
+    _db, motorista, gestor, aluno, viagem_futura_agendada_com_motorista
+):
+    _confirmacao(_db, viagem_futura_agendada_com_motorista, aluno.user.id, confirmacao=True)
+
+    resultado = cancelar_viagem(
+        str(motorista.user.id), str(viagem_futura_agendada_com_motorista.id), "ônibus quebrou"
+    )
+
+    assert resultado["alunos_notificados"] == 1
+    assert (
+        _db.session.get(Viagem, viagem_futura_agendada_com_motorista.id).status
+        == StatusViagem.CANCELADA
+    )
+    mensagem_aluno = Notificacao.query.filter_by(usuario_id=aluno.user.id).one().mensagem
+    assert "pelo motorista" in mensagem_aluno
+    assert "ônibus quebrou" in mensagem_aluno
+    assert Notificacao.query.filter_by(usuario_id=gestor.user.id).count() == 1
+    assert Notificacao.query.filter_by(usuario_id=motorista.user.id).count() == 0
+
+
+def test_cancelar_viagem_gestor_avisa_o_motorista(
+    _db, motorista, gestor, viagem_futura_agendada_com_motorista
+):
+    cancelar_viagem(
+        str(gestor.user.id), str(viagem_futura_agendada_com_motorista.id), "feriado municipal"
+    )
+
+    aviso = Notificacao.query.filter_by(usuario_id=motorista.user.id).one()
+    assert "feriado municipal" in aviso.mensagem
+    assert "pela prefeitura" in aviso.mensagem
 
 
 def test_cancelar_viagem_inexistente_404(_db, gestor):
