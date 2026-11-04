@@ -39,7 +39,20 @@ def test_lembrete_10h_avisa_os_alunos_da_rota_dentro_da_janela(
 
     aviso = Notificacao.query.filter_by(usuario_id=aluno.user.id).one()
     assert "06:00" in aviso.mensagem
+    assert "cerca de 10 horas" in aviso.mensagem
     assert _db.session.get(Viagem, viagem.id).aviso_24h_enviado is True
+
+
+def test_lembrete_de_viagem_criada_perto_da_saida_diz_o_tempo_real(
+    app, _db, aluno, rota, rota_aluno, horario_rota, motorista
+):
+    viagem, saida = _viagem_amanha_as_6h(_db, horario_rota, motorista)
+
+    _rodar(app, verificar_viagens_24h, saida - timedelta(minutes=12))
+
+    aviso = Notificacao.query.filter_by(usuario_id=aluno.user.id).one()
+    assert "daqui a 12 minutos" in aviso.mensagem
+    assert "10 horas" not in aviso.mensagem
 
 
 def test_lembrete_10h_nao_avisa_antes_da_janela_nem_depois_da_saida(

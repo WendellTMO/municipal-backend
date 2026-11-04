@@ -23,6 +23,15 @@ def _inicio_da_viagem(viagem: Any) -> datetime:
     return datetime.combine(viagem.data, viagem.horario_rota.horario_saida)
 
 
+def _falta_em_texto(falta: timedelta) -> str:
+    """Quanto falta para a saída, em palavras: "12 minutos" ou "cerca de 10 horas"."""
+    minutos = max(1, round(falta.total_seconds() / 60))
+    if minutos < 60:
+        return f"{minutos} minutos" if minutos > 1 else "1 minuto"
+    horas = round(minutos / 60)
+    return f"cerca de {horas} horas" if horas > 1 else "cerca de 1 hora"
+
+
 def verificar_viagens_24h(agora: datetime | None = None):
     """Job: lembra os alunos da rota 10 horas antes da saída.
 
@@ -53,6 +62,8 @@ def verificar_viagens_24h(agora: datetime | None = None):
             if inicio <= agora or inicio > limite:
                 continue
             hora = inicio.strftime("%H:%M")
+            # Viagem criada perto da saída entra na janela de 10 horas já com pouco tempo faltando.
+            falta_texto = _falta_em_texto(inicio - agora)
             inscricoes = RotaAluno.query.filter_by(rota_id=viagem.horario_rota.rota_id).all()
 
             for insc in inscricoes:
@@ -62,7 +73,7 @@ def verificar_viagens_24h(agora: datetime | None = None):
                         usuario_id=aluno.id,
                         titulo="⏰ Lembrete de Viagem",
                         mensagem=(
-                            f"A sua viagem sai às {hora}, daqui a cerca de 10 horas. "
+                            f"A sua viagem sai às {hora}, daqui a {falta_texto}. "
                             "Não se esqueça de confirmar a sua presença!"
                         ),
                     )
