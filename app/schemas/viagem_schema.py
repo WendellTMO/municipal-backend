@@ -283,6 +283,7 @@ class ViagemResponseSchema(BaseSchema):
     horario_inicio = fields.Method("get_horario_inicio")
     horario_fim = fields.DateTime(attribute="fim_real")
     realizada_sem_app = fields.Boolean()
+    motivo_cancelamento = fields.String(allow_none=True)
     km_real = fields.Float(allow_none=True)  # só existe em viagem finalizada pelo app
     inicio_real = fields.DateTime()  # Actual start time for elapsed calculation
     tipo = fields.Method("get_tipo")
@@ -388,6 +389,7 @@ class ViagemAgendaAlunoResponseSchema(BaseSchema):
     precisa_escolher_ponto = fields.Method("get_precisa_escolher_ponto")
     # Trip status and capacity — exposed so students can see bus occupancy
     status_viagem = fields.Method("get_status_viagem")
+    motivo_cancelamento = fields.String(allow_none=True)
     alunos_confirmados_count = fields.Method("get_alunos_confirmados_count")
     total_alunos = fields.Method("get_total_alunos")
 

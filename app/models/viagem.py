@@ -33,6 +33,8 @@ class Viagem(db.Model):
     km_real = db.Column(db.Numeric(10, 2), nullable=True)
     # O motorista confirmou depois que a viagem foi feita, sem ter registrado pelo app.
     realizada_sem_app = db.Column(db.Boolean, nullable=False, server_default="false")
+    # Motivo informado por quem cancelou (motorista ou gestor). Aparece para alunos e motorista.
+    motivo_cancelamento = db.Column(db.String(200), nullable=True)
 
     motorista_lat = db.Column(db.Numeric(10, 8), nullable=True)
     motorista_lon = db.Column(db.Numeric(11, 8), nullable=True)

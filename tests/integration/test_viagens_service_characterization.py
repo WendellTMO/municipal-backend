@@ -22,7 +22,7 @@ from app.core.exceptions import (
 from app.models.enum import DiaDaSemana, SentidoViagem, StatusViagem
 from app.models.geo import Ponto
 from app.models.notificacao import Notificacao
-from app.models.rota import DiasOperacao, HorarioRota, RotaPonto
+from app.models.rota import DiasOperacao, HorarioRota, RotaAluno, RotaPonto
 from app.models.viagem import AlunosConfirmados, TelemetriaViagem, Viagem, ViagemPonto
 from app.services import viagens_service
 from app.services.viagens_service import (
@@ -134,13 +134,33 @@ def test_get_proximas_viagens_aluno_ignora_viagem_passada(
     assert get_proximas_viagens_aluno(str(aluno.user.id)) == []
 
 
-def test_get_proximas_viagens_aluno_ignora_status_finalizada_e_cancelada(
+def test_get_proximas_viagens_aluno_ignora_finalizada_e_inclui_cancelada_com_motivo(
     _db, aluno, rota, rota_aluno, horario_rota
 ):
     _viagem(_db, horario_rota, date.today() + timedelta(days=1), status=StatusViagem.FINALIZADA)
-    _viagem(_db, horario_rota, date.today() + timedelta(days=2), status=StatusViagem.CANCELADA)
+    cancelada = _viagem(
+        _db, horario_rota, date.today() + timedelta(days=2), status=StatusViagem.CANCELADA
+    )
+    cancelada.motivo_cancelamento = "problema no ônibus"
+    _db.session.commit()
 
-    assert get_proximas_viagens_aluno(str(aluno.user.id)) == []
+    resultado = get_proximas_viagens_aluno(str(aluno.user.id))
+
+    assert [v.id for v in resultado] == [cancelada.id]
+    assert resultado[0].motivo_cancelamento == "problema no ônibus"
+
+
+def test_confirmar_presenca_em_viagem_cancelada_e_recusada(
+    _db, aluno, rota, rota_aluno, horario_rota
+):
+    cancelada = _viagem(
+        _db, horario_rota, date.today() + timedelta(days=2), status=StatusViagem.CANCELADA
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        confirmar_presenca_aluno(str(aluno.user.id), str(cancelada.id), {"confirmacao": True})
+
+    assert exc.value.message == "Esta viagem foi cancelada"
 
 
 def test_get_proximas_viagens_aluno_inclui_em_andamento(_db, aluno, rota, rota_aluno, horario_rota):
@@ -1048,20 +1068,23 @@ def test_cancelar_viagem_finalizada_400(_db, gestor, horario_rota):
         cancelar_viagem(str(gestor.user.id), str(viagem.id))
 
 
-def test_cancelar_viagem_notifica_confirmados_e_muda_status(
-    _db, gestor, aluno, other_aluno, viagem_futura_agendada_com_motorista
+def test_cancelar_viagem_avisa_todos_os_alunos_da_rota_e_grava_o_motivo(
+    _db, gestor, aluno, other_aluno, rota, rota_aluno, viagem_futura_agendada_com_motorista
 ):
+    _db.session.add(RotaAluno(rota_id=rota.id, aluno_id=other_aluno.user.id))
+    _db.session.commit()
     _confirmacao(_db, viagem_futura_agendada_com_motorista, aluno.user.id, confirmacao=True)
-    _confirmacao(_db, viagem_futura_agendada_com_motorista, other_aluno.user.id, confirmacao=False)
 
-    resultado = cancelar_viagem(str(gestor.user.id), str(viagem_futura_agendada_com_motorista.id))
-
-    assert resultado == {"message": "Viagem cancelada com sucesso", "alunos_notificados": 1}
-    assert (
-        _db.session.get(Viagem, viagem_futura_agendada_com_motorista.id).status
-        == StatusViagem.CANCELADA
+    resultado = cancelar_viagem(
+        str(gestor.user.id), str(viagem_futura_agendada_com_motorista.id), "feriado municipal"
     )
+
+    assert resultado == {"message": "Viagem cancelada com sucesso", "alunos_notificados": 2}
+    viagem = _db.session.get(Viagem, viagem_futura_agendada_com_motorista.id)
+    assert viagem.status == StatusViagem.CANCELADA
+    assert viagem.motivo_cancelamento == "feriado municipal"
     assert Notificacao.query.filter_by(usuario_id=aluno.user.id).count() == 1
+    assert Notificacao.query.filter_by(usuario_id=other_aluno.user.id).count() == 1
 
 
 def test_cancelar_viagem_de_outra_prefeitura_404(

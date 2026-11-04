@@ -114,7 +114,7 @@ def _popular_dados_da_viagem(viagem_obj: Viagem, rota_obj: Rota) -> None:
 
 
 def get_proximas_viagens_aluno(user_id: str) -> list[Viagem]:
-    """Returns upcoming scheduled trips for the logged student."""
+    """Returns upcoming trips (scheduled, running or cancelled) for the logged student."""
     aluno = db.session.get(User, user_id)
     if not aluno or aluno.role != UserRole.ALUNO:
         raise ForbiddenError("Apenas alunos podem ver sua agenda de viagens")
@@ -141,7 +141,10 @@ def get_proximas_viagens_aluno(user_id: str) -> list[Viagem]:
         # aluno_id when serializing.
         .filter(
             RotaAluno.aluno_id == aluno.id,
-            Viagem.status.in_([StatusViagem.AGENDADA, StatusViagem.EM_ANDAMENTO]),
+            # A cancelada fica na agenda com o motivo: o aluno precisa ver que ela não vai acontecer.
+            Viagem.status.in_(
+                [StatusViagem.AGENDADA, StatusViagem.EM_ANDAMENTO, StatusViagem.CANCELADA]
+            ),
             Viagem.data >= hoje,
         )
         .order_by(Viagem.data.asc(), HorarioRota.horario_saida.asc())
@@ -283,6 +286,8 @@ def confirmar_presenca_aluno(
         viagem = db.session.get(Viagem, viagem_id)
         if not viagem:
             raise NotFoundError("Viagem não encontrada")
+        if confirmacao and viagem.status == StatusViagem.CANCELADA:
+            raise ValidationError("Esta viagem foi cancelada")
 
         registro = db.session.get(AlunosConfirmados, (viagem.id, aluno.usuario_id))
 
@@ -790,7 +795,8 @@ def registrar_chegadas(user_id: str, viagem_id: str, eventos: list[dict[str, Any
 def cancelar_viagem(user_id: str, viagem_id: str, motivo: str | None = None) -> dict[str, Any]:
     """Cancela uma viagem. Gestor cancela qualquer uma da prefeitura; motorista, só a sua.
 
-    Os alunos confirmados são avisados. Quem não cancelou também é avisado: o motorista
+    Todos os alunos inscritos na rota são avisados, tenham confirmado ou não, e o motivo fica
+    gravado na viagem para o aluno ver ao abrir. Quem não cancelou também é avisado: o motorista
     quando o gestor cancela, e os gestores da prefeitura quando o motorista cancela.
     """
     user = db.session.get(User, user_id)
@@ -809,16 +815,23 @@ def cancelar_viagem(user_id: str, viagem_id: str, motivo: str | None = None) -> 
 
     with transactional():
         viagem.status = StatusViagem.CANCELADA
+        viagem.motivo_cancelamento = motivo or None
 
-        confirmados = AlunosConfirmados.query.filter_by(viagem_id=viagem.id, confirmacao=True).all()
+        alunos_a_avisar: list[Any] = []
+        for inscricao in RotaAluno.query.filter_by(rota_id=viagem.horario_rota.rota_id).all():
+            alunos_a_avisar.append(inscricao.aluno_id)
+        # Quem confirmou presença mas já saiu da rota também recebe o aviso.
+        for conf in AlunosConfirmados.query.filter_by(viagem_id=viagem.id, confirmacao=True).all():
+            if conf.aluno_id not in alunos_a_avisar:
+                alunos_a_avisar.append(conf.aluno_id)
         data_formatada = viagem.data.strftime("%d/%m/%Y")
         hora_formatada = viagem.horario_rota.horario_saida.strftime("%H:%M")
         quem = "pelo motorista" if user.role == UserRole.MOTORISTA else "pela prefeitura"
         sufixo_motivo = f" Motivo: {motivo}." if motivo else ""
 
-        for conf in confirmados:
+        for aluno_id in alunos_a_avisar:
             NotificacaoService._criar_notificacao_interna(
-                usuario_id=conf.aluno_id,
+                usuario_id=aluno_id,
                 titulo="Viagem Cancelada",
                 mensagem=(
                     f"Atenção! A viagem da rota agendada para o dia {data_formatada} "
@@ -851,7 +864,7 @@ def cancelar_viagem(user_id: str, viagem_id: str, motivo: str | None = None) -> 
         action="cancelar_viagem", user_id=user_id, resource_type="viagem", resource_id=viagem_id
     )
 
-    return {"message": "Viagem cancelada com sucesso", "alunos_notificados": len(confirmados)}
+    return {"message": "Viagem cancelada com sucesso", "alunos_notificados": len(alunos_a_avisar)}
 
 
 def _info_observadores(viagem: Viagem, agora: datetime) -> dict:
