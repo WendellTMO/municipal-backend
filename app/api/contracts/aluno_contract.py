@@ -51,7 +51,7 @@ def register_models(api):
             "password": fields.String(required=True, description="Senha"),
             "cpf": fields.String(required=True, description="CPF"),
             "telefone": fields.String(required=False, description="Telefone"),
-            "matricula": fields.String(required=True, description="Matrícula escolar"),
+            "matricula": fields.String(required=False, description="Matrícula escolar (opcional)"),
             "instituicao_id": fields.String(required=True, description="UUID da instituição"),
             "data_nascimento": fields.String(
                 required=True, description="Data de nascimento (YYYY-MM-DD)"

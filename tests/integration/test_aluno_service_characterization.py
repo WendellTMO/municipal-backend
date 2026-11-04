@@ -419,6 +419,16 @@ def test_update_me_completa_signup_do_adulto(_db, aluno_pending, instituicao):
     assert atualizado.signup_completed_at is not None
 
 
+def test_update_me_completa_signup_sem_matricula(_db, aluno_pending, instituicao):
+    aluno_pending.user.instituicao_id = instituicao.id
+    aluno_pending.user.matricula = None
+    _db.session.commit()
+
+    atualizado = update_me(str(aluno_pending.user.id), {"endereco_casa": dict(ENDERECO)})
+
+    assert atualizado.status == UserStatus.ACTIVE
+
+
 def test_update_me_pendencias_retorna_400(_db, aluno_pending):
     """
 
@@ -436,7 +446,6 @@ def test_update_me_pendencias_retorna_400(_db, aluno_pending):
     assert exc.value.status_code == 400
     assert "Cadastro precisa ser finalizado" in exc.value.message
     assert exc.value.details["missing"] == [
-        "matricula",
         "instituicao_id",
         "endereco_casa.latitude/longitude",
     ]

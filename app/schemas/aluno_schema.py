@@ -33,7 +33,7 @@ class AlunoSelfSignupRequestSchema(BaseSchema):
     cpf = fields.String(required=True, validate=validate_cpf)
     telefone = fields.String(load_default=None, allow_none=True, validate=validate_optional_phone)
 
-    matricula = fields.String(required=True, validate=validate.Length(min=1))
+    matricula = fields.String(load_default=None, allow_none=True, validate=validate_optional_string)
     instituicao_id = fields.UUID(required=True)
 
     # Date of birth — determines whether guardian consent is required

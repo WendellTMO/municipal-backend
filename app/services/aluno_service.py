@@ -312,8 +312,6 @@ def _finalizar_cadastro_se_completo(aluno: Aluno, data: dict[str, Any], user_id:
         return
 
     faltando = []
-    if not aluno.matricula and not data.get("matricula"):
-        faltando.append("matricula")
     if not aluno.instituicao_id and not data.get("instituicao_id"):
         faltando.append("instituicao_id")
 

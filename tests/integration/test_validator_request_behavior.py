@@ -119,3 +119,14 @@ def test_create_motorista_reports_invalid_cpf_in_the_message(gestor):
     assert error.get("code") == "VALIDATION_ERROR"
     assert error.get("message") == "CPF inválido (primeiro dígito verificador)"
     assert "details" not in error, error
+
+
+@pytest.mark.integration
+def test_signup_nao_exige_matricula(client):
+    """Matrícula é opcional: sem ela, o cadastro passa da validação do corpo."""
+    payload = _signup_payload()
+    del payload["matricula"]
+
+    r = client.post("/v1/alunos/signup", json=payload)
+
+    assert "matricula" not in str(_errors(r))
