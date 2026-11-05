@@ -44,11 +44,14 @@ PIN_MAX_TENTATIVAS = 5
 MAX_TENTATIVAS_ENVIO = 3
 LIMITE_ENVIO_POR_EXECUCAO = 50
 
-TERMOS_DE_USO_VERSAO = "demo-1"
+# Versão dos documentos publicados em /termos-de-uso e /politica-de-privacidade. O aceite grava
+# esta versão no convite. Troque junto com o Anexo I (histórico) dos documentos.
+TERMOS_DE_USO_VERSAO = "1.0"
 TERMOS_DE_USO_TEXTO = (
-    "Ao continuar, você concorda em usar o BusKá apenas para o transporte escolar e autoriza "
-    "o uso dos seus dados (nome, e-mail, CPF, endereço) pelos gestores do transporte. "
-    "Esta é a versão de demonstração."
+    "Ao continuar, você declara que leu e concorda com os Termos de Serviço e com a Política de "
+    "Privacidade do BusKá. Usamos seus dados (nome, e-mail, CPF, endereço e a localização durante "
+    "as viagens) para organizar o transporte escolar do seu município. Esta é a versão de "
+    "demonstração."
 )
 
 ENDERECO_CAMPOS = {

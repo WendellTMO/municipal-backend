@@ -47,8 +47,9 @@ if curl -sI "$URL$ARQ" | grep -qi "cache-control:.*immutable"; then ok "$ARQ gua
 if curl -sI "$URL/" | grep -qi "cache-control:.*no-cache"; then ok "index.html sempre revalidado"; else falha "index.html pode ficar em cache"; fi
 if curl -sI "$URL/app-version.json" | grep -qi "cache-control:.*no-cache"; then ok "app-version.json sem cache"; else falha "app-version.json com cache"; fi
 
-# Termos de uso: página só com o texto, não o app
-if curl -s "$URL/termos-de-uso" | grep -q "Termos de uso e privacidade do BusKá"; then ok "/termos-de-uso mostra os termos"; else falha "/termos-de-uso não mostra os termos"; fi
+# Documentos legais: páginas só com o texto, não o app
+if curl -s "$URL/termos-de-uso" | grep -q "<h1>Termos de Serviço</h1>"; then ok "/termos-de-uso mostra os Termos de Serviço"; else falha "/termos-de-uso não mostra os Termos de Serviço"; fi
+if curl -s "$URL/politica-de-privacidade" | grep -q "<h1>Política de Privacidade</h1>"; then ok "/politica-de-privacidade mostra a Política"; else falha "/politica-de-privacidade não mostra a Política"; fi
 
 # APK: o hash do arquivo servido bate com o app-version.json
 JSON=$(curl -s "$URL/app-version.json")
