@@ -22,6 +22,7 @@ from app.models.rota import DiasOperacao, HorarioRota, Rota, RotaAluno, RotaPont
 from app.models.user import Aluno, User
 from app.models.viagem import AlunosConfirmados, TelemetriaViagem, Viagem, ViagemPonto
 from app.services.notificacao_service import NotificacaoService
+from app.tasks.expiracao_tasks import MOTIVO_NAO_REALIZADA
 from app.tasks.viagem_tasks import realizar_auto_checkin
 from app.utils import audit_logger
 from app.utils.geo_utils import calcular_distancia_metros
@@ -635,12 +636,17 @@ def controlar_viagem(user_id: str, viagem_id: str, data: dict[str, Any]) -> Viag
             viagem.km_real = km_total
         elif acao == "MARCAR_REALIZADA":
             # Viagem que passou do horário sem ser registrada no app: o motorista confirma que foi feita.
-            if viagem.status != StatusViagem.AGENDADA:
+            cancelada_pelo_prazo = (
+                viagem.status == StatusViagem.CANCELADA
+                and viagem.motivo_cancelamento == MOTIVO_NAO_REALIZADA
+            )
+            if viagem.status != StatusViagem.AGENDADA and not cancelada_pelo_prazo:
                 raise ValidationError("Só uma viagem agendada pode ser marcada como realizada")
             saida = datetime.combine(viagem.data, viagem.horario_rota.horario_saida)
             if saida > datetime.now():
                 raise ValidationError("A viagem ainda não começou")
             viagem.status = StatusViagem.FINALIZADA
+            viagem.motivo_cancelamento = None
             viagem.realizada_sem_app = True
         else:
             raise ValidationError("Ação inválida. Use INICIAR, FINALIZAR ou MARCAR_REALIZADA")

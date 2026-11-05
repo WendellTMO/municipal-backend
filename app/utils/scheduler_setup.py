@@ -1,5 +1,6 @@
 import atexit
 import os
+from datetime import datetime
 
 from apscheduler.triggers.cron import CronTrigger
 from flask import Flask
@@ -7,6 +8,7 @@ from flask_apscheduler import APScheduler
 
 from app.tasks.agendamento_tasks import job_gerar_viagens_semanais
 from app.tasks.convite_tasks import job_convites
+from app.tasks.expiracao_tasks import cancelar_viagens_nao_realizadas
 from app.tasks.notificacao_tasks import verificar_viagens_10min, verificar_viagens_24h
 
 
@@ -60,6 +62,17 @@ def init_scheduler(app: Flask, scheduler: APScheduler):
             trigger="interval",
             minutes=1,
             max_instances=1,
+            replace_existing=True,
+        )
+
+        # Viagem agendada que ficou 24 horas sem sair vira cancelada (não realizada).
+        scheduler.add_job(
+            id="job_expirar_viagens",
+            func=cancelar_viagens_nao_realizadas,
+            trigger="interval",
+            hours=12,
+            # Roda também na subida: todo deploy reinicia o agendador e zeraria a contagem das 12 horas.
+            next_run_time=datetime.now(),
             replace_existing=True,
         )
 

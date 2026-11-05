@@ -56,5 +56,26 @@ for i in $(seq 1 30); do
 done
 curl -sf http://localhost:5000/swagger.json >/dev/null
 docker logs buska_scheduler 2>&1 | grep "Scheduler up with"
+
+# Os jobs periódicos moram no scheduler. Deploy que sobe sem algum deles falha aqui, em vez de
+# deixar lembretes, convites ou o cancelamento de viagem vencida parados sem ninguém ver.
+JOBS="job_24h job_10min job_convites job_expirar_viagens job_viagens_semanais"
+for i in $(seq 1 15); do
+  FALTAM=""
+  for j in $JOBS; do
+    achou=$(docker exec buska_db_prod psql -U "$DB_USER" -d "$DB_NAME" -tAc \
+      "SELECT count(*) FROM apscheduler_jobs WHERE id = '$j'")
+    if [ "$achou" != "1" ]; then FALTAM="$FALTAM $j"; fi
+  done
+  if [ -z "$FALTAM" ]; then
+    echo "Jobs do scheduler registrados: $JOBS"
+    break
+  fi
+  if [ "$i" = "15" ]; then
+    echo "FALHA: jobs ausentes no scheduler:$FALTAM"
+    exit 1
+  fi
+  sleep 2
+done
 rm -f .env.prod
 echo "Deploy da demo concluído: $API_IMAGE"
