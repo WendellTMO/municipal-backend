@@ -27,9 +27,11 @@ fi
 # Copia sem apagar buska.apk, buska-anterior.apk, app-version.json nem a landing page.
 rsync -rt "$COPIA/dist/" "$VM:~/web-new/"
 ssh "$VM" 'sudo rsync -rt --no-owner --no-group ~/web-new/ /var/www/buska-app/'
-# Termos de uso: página estática servida em /termos-de-uso pelo nginx (ver nginx-demo.conf).
-rsync -t "$(dirname "${BASH_SOURCE[0]}")/termos-de-uso.html" "$VM:~/web-new/"
-ssh "$VM" 'sudo install -m 644 ~/web-new/termos-de-uso.html /var/www/buska-app/termos-de-uso.html'
+# Termos de Serviço e Política de Privacidade: páginas estáticas servidas pelo nginx (ver nginx-demo.conf).
+for pagina in termos-de-uso politica-de-privacidade; do
+    rsync -t "$(dirname "${BASH_SOURCE[0]}")/$pagina.html" "$VM:~/web-new/"
+    ssh "$VM" "sudo install -m 644 ~/web-new/$pagina.html /var/www/buska-app/$pagina.html"
+done
 # Bundles com hash antigos ficam na VM (cerca de 1,3 MB por publicação). Limpe à mão quando precisar.
 echo "Web publicado em $API_URL"
 URL="$API_URL" "$(dirname "${BASH_SOURCE[0]}")/verificar-demo.sh"
