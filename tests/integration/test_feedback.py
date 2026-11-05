@@ -125,3 +125,36 @@ def test_feedback_user_agent_e_truncado(aluno):
     assert r.status_code == 201
     row = db.session.get(Feedback, r.get_json()["id"])
     assert row.user_agent == "x" * 300
+
+
+JPEG_MINIMO = b"\xff\xd8\xff\xe0" + b"0" * 64
+
+
+@pytest.mark.integration
+def test_feedback_guarda_a_captura_da_tela_e_o_tamanho(aluno):
+    import base64
+
+    r = _post(aluno.client, tamanho_tela="390x844", captura=base64.b64encode(JPEG_MINIMO).decode())
+    assert r.status_code == 201, r.get_data(as_text=True)
+
+    row = db.session.get(Feedback, r.get_json()["id"])
+    assert row.tamanho_tela == "390x844"
+    assert row.captura == JPEG_MINIMO
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "captura",
+    ["isso-nao-e-base64!!", "aGVsbG8gbXVuZG8=", "A" * 600_000],
+    ids=["nao_base64", "nao_jpeg", "grande_demais"],
+)
+def test_feedback_recusa_captura_invalida(aluno, captura):
+    r = _post(aluno.client, captura=captura)
+    assert r.status_code == 400, r.get_data(as_text=True)
+
+
+@pytest.mark.integration
+def test_feedback_sem_captura_continua_valendo(aluno):
+    r = _post(aluno.client)
+    assert r.status_code == 201
+    assert db.session.get(Feedback, r.get_json()["id"]).captura is None

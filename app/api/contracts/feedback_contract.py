@@ -14,6 +14,8 @@ def register_models(api):
             "plataforma": fields.String(enum=["android", "ios", "web"]),
             "dispositivo": fields.String(max_length=100, description="Modelo do aparelho ou navegador"),
             "versao_so": fields.String(max_length=40, description="Versão do sistema, ex.: Android 14"),
+            "tamanho_tela": fields.String(description="Largura x altura da janela, ex.: 390x844"),
+            "captura": fields.String(description="Imagem da tela em JPEG base64, até 400 KB"),
         },
     )
 

@@ -33,5 +33,8 @@ class Feedback(db.Model):
     # Modelo do aparelho e versão do sistema: o user_agent do app nativo é só "okhttp".
     dispositivo = db.Column(db.String(100), nullable=True)
     versao_so = db.Column(db.String(40), nullable=True)
+    # Largura x altura da janela (ex.: "390x844") e a imagem da tela no momento do relato (JPEG).
+    tamanho_tela = db.Column(db.String(20), nullable=True)
+    captura = db.deferred(db.Column(db.LargeBinary, nullable=True))
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
