@@ -47,17 +47,7 @@ def register_models(api):
         },
     )
 
-    change_password_request = api.model(
-        "ChangePasswordRequest",
-        {
-            "current_password": fields.String(required=True, description="Senha atual"),
-            "new_password": fields.String(required=True, description="Nova senha (8 a 128)"),
-            "confirm_password": fields.String(required=True, description="Repetição da nova senha"),
-        },
-    )
-
     return {
-        "change_password_request": change_password_request,
         "login_request": login_request,
         "token_response": token_response,
         "forgot_password_request": forgot_password_request,

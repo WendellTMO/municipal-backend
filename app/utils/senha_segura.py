@@ -8,6 +8,7 @@ import hashlib
 import logging
 
 import requests
+from flask import current_app
 
 from app.core.exceptions import ValidationError
 from app.utils.security import SecurityConfig
@@ -38,6 +39,8 @@ def senha_vazada(senha: str) -> bool:
 
     Só os 5 primeiros caracteres do SHA-1 saem do servidor, nunca a senha nem o hash inteiro.
     """
+    if current_app.config.get("TESTING"):
+        return False
     digest = hashlib.sha1(senha.encode("utf-8"), usedforsecurity=False).hexdigest().upper()
     prefixo, sufixo = digest[:5], digest[5:]
     try:

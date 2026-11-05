@@ -365,8 +365,8 @@ def test_change_password_troca_a_senha(_db, aluno):
     assert check_password_hash(_db.session.get(User, aluno.user.id).senha_hash, "NovaSenha123!")
 
 
-def test_change_password_senha_atual_errada_401(_db, aluno):
-    with pytest.raises(UnauthorizedError) as exc:
+def test_change_password_senha_atual_errada_400(_db, aluno):
+    with pytest.raises(ValidationError) as exc:
         change_password(
             str(aluno.user.id),
             {"current_password": "ErradaMesmo123!", "new_password": "NovaSenha123!"},

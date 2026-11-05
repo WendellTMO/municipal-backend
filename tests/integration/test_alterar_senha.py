@@ -28,7 +28,7 @@ def sem_rede():
 
 def _trocar(actor, atual=ATUAL, nova=NOVA, confirmacao=None):
     return actor.client.post(
-        "/v1/auth/change-password",
+        "/v1/users/change-password",
         json={
             "current_password": atual,
             "new_password": nova,
@@ -89,7 +89,7 @@ def test_acerto_zera_a_contagem_de_erros(aluno, _db):
         ("curta1", "curta1", "mínimo"),
         ("a" * 129, "a" * 129, "máximo"),
         (NOVA, NOVA + "x", "coincidem"),
-        (ATUAL, ATUAL, "diferente da atual"),
+        (ATUAL, ATUAL, "diferente da senha atual"),
         ("senha123", "senha123", "muito comum"),
         ("aaaaaaaaaaaa", "aaaaaaaaaaaa", "muito comum"),
     ],
@@ -116,7 +116,7 @@ def test_recusa_senha_que_ja_vazou(aluno, sem_rede):
 
 def test_sem_token_nao_troca(client):
     r = client.post(
-        "/v1/auth/change-password",
+        "/v1/users/change-password",
         json={"current_password": ATUAL, "new_password": NOVA, "confirm_password": NOVA},
     )
     assert r.status_code == 401

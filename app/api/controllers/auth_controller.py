@@ -1,7 +1,6 @@
 from typing import Any
 
 from flask import current_app, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restx import Namespace, Resource
 
 from app.api.contracts import auth_contract
@@ -94,28 +93,3 @@ class AuthResetPassword(Resource):
         auth_service.reset_password(token, new_password)
         return {"message": "Senha redefinida com sucesso. Faça login com a nova senha."}, 200
 
-
-@api.route("/change-password")
-class AuthChangePassword(Resource):
-    @api.doc(
-        "auth_change_password",
-        security="Bearer",
-        responses={
-            200: "Senha alterada; devolve um token novo para este aparelho",
-            400: "Senha atual errada, senhas diferentes ou senha nova fraca",
-            401: "Não autenticado",
-            429: "Muitas tentativas erradas; troca travada por 15 minutos",
-        },
-    )
-    @api.expect(models["change_password_request"])
-    @jwt_required()
-    def post(self) -> tuple[dict[str, Any], int]:
-        """Troca a senha de quem está logado. As outras sessões deixam de valer."""
-        data = request.get_json(silent=True) or {}
-        resposta = auth_service.alterar_senha(
-            user_id=get_jwt_identity(),
-            senha_atual=data.get("current_password") or "",
-            nova_senha=data.get("new_password") or "",
-            confirmacao=data.get("confirm_password") or "",
-        )
-        return resposta, 200

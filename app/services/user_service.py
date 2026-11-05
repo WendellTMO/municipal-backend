@@ -18,6 +18,7 @@ from app.core.transaction import transactional
 from app.models.base import db
 from app.models.enum import UserRole, UserStatus
 from app.models.user import Aluno, Motorista, User
+from app.services import auth_service
 from app.utils import audit_logger, validate_cpf, validate_email, validate_password
 
 logger = logging.getLogger(__name__)
@@ -149,39 +150,19 @@ def create_motorista(gestor_id: str, data: dict[str, Any]) -> Motorista:
     return new_motorista
 
 
-def change_password(user_id: str, data: dict[str, Any]) -> None:
-    """Change user password (requires current password verification)."""
-    user = get_user_or_404(user_id)
-
+def change_password(user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Troca a senha de quem está logado. As regras de segurança ficam em `auth_service.alterar_senha`."""
     current_password = data.get("current_password")
     new_password = data.get("new_password")
 
     if not current_password or not new_password:
         raise ValidationError("Senha atual e nova senha são obrigatórias")
 
-    new_password = validate_password(new_password, "Nova senha")
-
-    if new_password == current_password:
-        raise ValidationError("Nova senha deve ser diferente da senha atual")
-
-    # Verify current password and log failed attempts
-    if not check_password_hash(user.senha_hash, current_password):
-        audit_logger.log_security_event(
-            event_type="failed_password_change",
-            severity="medium",
-            user_id=user_id,
-            details={"reason": "incorrect_current_password"},
-        )
-        raise UnauthorizedError("A senha atual está incorreta")
-
-    with transactional():
-        user.senha_hash = generate_password_hash(new_password)
-
-    audit_logger.log_user_action(
-        action="change_password",
-        user_id=user_id,
-        resource_type="user",
-        resource_id=user_id,
+    return auth_service.alterar_senha(
+        user_id,
+        senha_atual=current_password,
+        nova_senha=new_password,
+        confirmacao=data.get("confirm_password", new_password),
     )
 
 

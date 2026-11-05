@@ -45,12 +45,14 @@ class ChangePasswordRequestSchema(BaseSchema):
 
     current_password = fields.String(required=True)
     new_password = fields.String(required=True)
+    confirm_password = fields.String(load_default=None)
 
 
 class ChangePasswordResponseSchema(BaseSchema):
     """Schema for changing password response."""
 
     message = fields.String()
+    token = fields.String()
 
 
 class UserResponseSchema(BaseSchema):

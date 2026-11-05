@@ -170,8 +170,7 @@ class UserChangePassword(Resource):
         responses={
             200: "Password changed successfully",
             400: "Validation error",
-            401: "Incorrect current password",
-            429: "Too many attempts - rate limited",
+            429: "Troca travada por 15 minutos depois de 5 erros da senha atual",
         },
     )
     @api.expect(models["change_password_request"])
@@ -182,8 +181,8 @@ class UserChangePassword(Resource):
         current_user_id = get_jwt_identity()
         payload = change_password_schema.load(request.get_json(silent=True) or {})
 
-        user_service.change_password(current_user_id, payload)
-        return change_password_response_schema.dump({"message": "Senha alterada com sucesso"}), 200
+        resposta = user_service.change_password(current_user_id, payload)
+        return change_password_response_schema.dump(resposta), 200
 
 
 @api.route("/fcm-token")

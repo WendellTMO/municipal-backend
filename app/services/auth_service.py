@@ -248,14 +248,15 @@ def alterar_senha(user_id: str, senha_atual: str, nova_senha: str, confirmacao: 
         minutos = max(1, int((user.troca_senha_bloqueada_ate - agora).total_seconds() // 60) + 1)
         raise RateLimitError(f"Muitas tentativas. Tente de novo em {minutos} minutos.")
 
+    # Antes de conferir a senha atual: comparar as duas digitadas não revela nada sobre a conta.
+    if nova_senha and nova_senha == senha_atual:
+        raise ValidationError("Nova senha deve ser diferente da senha atual")
     if not senha_atual or not check_password_hash(user.senha_hash, senha_atual):
         _registrar_falha_troca_senha(user, agora)
         raise ValidationError("A senha atual está incorreta")
 
     if not nova_senha or nova_senha != confirmacao:
         raise ValidationError("As senhas não coincidem")
-    if check_password_hash(user.senha_hash, nova_senha):
-        raise ValidationError("A nova senha precisa ser diferente da atual")
     nova_senha = validar_senha_nova(nova_senha, email=user.email, nome=user.nome)
 
     with transactional():

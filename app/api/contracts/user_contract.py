@@ -68,7 +68,8 @@ def register_models(api):
         "ChangePasswordRequest",
         {
             "current_password": fields.String(required=True, description="Senha atual"),
-            "new_password": fields.String(required=True, description="Nova senha"),
+            "new_password": fields.String(required=True, description="Nova senha (8 a 128)"),
+            "confirm_password": fields.String(description="Repetição da nova senha (opcional)"),
         },
     )
 
@@ -76,6 +77,7 @@ def register_models(api):
         "ChangePasswordResponse",
         {
             "message": fields.String(description="Mensagem de sucesso"),
+            "token": fields.String(description="Token novo para este aparelho; os demais caducam"),
         },
     )
 
