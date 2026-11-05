@@ -31,6 +31,12 @@ class User(db.Model):
     )
     signup_completed_at = db.Column(db.DateTime(timezone=True))
 
+    # Sessões (tokens) emitidas antes desta data deixam de valer: troca ou redefinição de senha.
+    senha_alterada_em = db.Column(db.DateTime(timezone=True), nullable=True)
+    # Trava contra adivinhar a senha atual na tela de trocar senha.
+    falhas_troca_senha = db.Column(db.Integer, nullable=False, server_default="0")
+    troca_senha_bloqueada_ate = db.Column(db.DateTime(timezone=True), nullable=True)
+
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
     updated_at = db.Column(
         db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()

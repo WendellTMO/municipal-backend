@@ -7,6 +7,8 @@ from marshmallow.exceptions import ValidationError as MarshmallowValidationError
 from werkzeug.exceptions import HTTPException
 
 from app.core.exceptions import AppError, ValidationError
+from app.models.base import db
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +167,19 @@ def register_jwt_handlers(jwt: JWTManager) -> None:
     @jwt.expired_token_loader
     def expired_token(jwt_header, jwt_payload):
         return jsonify(_error_payload(code="TOKEN_EXPIRED", message="Token expirado")), 401
+
+    @jwt.token_in_blocklist_loader
+    def sessao_anterior_a_troca_de_senha(jwt_header, jwt_payload) -> bool:
+        """Token emitido antes da última troca de senha não vale mais.
+
+        Compara em segundos inteiros: o token novo, emitido na mesma troca, continua valendo.
+        """
+        alterada_em = (
+            db.session.query(User.senha_alterada_em).filter(User.id == jwt_payload["sub"]).scalar()
+        )
+        if alterada_em is None:
+            return False
+        return int(jwt_payload.get("iat", 0)) < int(alterada_em.timestamp())
 
     @jwt.revoked_token_loader
     def revoked_token(jwt_header, jwt_payload):
