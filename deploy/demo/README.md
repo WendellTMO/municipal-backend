@@ -72,3 +72,8 @@ devem bloquear o uso até atualizar. Com `0` a atualização é opcional.
 
 `nginx-demo.conf` serve `/app-version.json` e `/buska.apk` com `Cache-Control: no-cache`, antes do
 `location /`, para o app sempre ver a versão publicada mais recente.
+
+`/termos-de-uso` devolve `termos-de-uso.html`, uma página só com o texto dos termos de uso e da
+política de privacidade. O arquivo é publicado por `publicar-web-demo.sh` junto com o site, e o
+`location = /termos-de-uso` do `nginx-demo.conf` precisa estar ativo no nginx da VM. Ao mudar os
+dados que o app coleta, atualize o texto e a data no topo da página.
