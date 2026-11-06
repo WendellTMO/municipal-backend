@@ -26,6 +26,9 @@ repos:
         stages: [pre-commit]
       - id: check-merge-conflict
         stages: [pre-commit]
+      - id: detect-private-key
+        exclude: \.fake\.json$
+        stages: [pre-commit]
 
   - repo: https://github.com/psf/black
     rev: 26.1.0
@@ -59,3 +62,47 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
+
+  # Barreira contra segredo no GitHub: os repositórios são públicos. O mesmo bloqueio roda no CI
+  # (.github/workflows/segredos.yml), para valer também quando o hook local é pulado.
+  - repo: local
+    hooks:
+      - id: arquivo-secreto
+        name: bloqueia arquivo de segredo (chave, dump, .env, tfstate)
+        language: fail
+        entry: >-
+          Arquivo de segredo não vai para o GitHub (repositório público). Tire do commit e
+          deixe fora do git. Backups, chaves e .env ficam só na VM e em ~/buska-backups.
+        files: >-
+          (?x)(^|/)(
+          \.env(\..*)?
+          |.*\.(keystore|jks|p12|pfx|pem|dump|pass|tfstate|tfvars)
+          |terraform\.tfstate(\.backup)?
+          |clouds\.yaml
+          |.*service-account.*\.json
+          |id_(rsa|ed25519).*
+          )$
+        exclude: >-
+          (?x)(^|/)(
+          \.env\.example
+          |env\.demo\.example
+          |debug\.keystore
+          |.*\.fake\.json
+          )$
+      - id: segredo-no-conteudo
+        name: bloqueia credencial colada no código
+        language: pygrep
+        entry: >-
+          (?x)(
+          application_credential_secret\s*[:=]\s*\S{16,}
+          |gh[pousr]_[A-Za-z0-9]{30,}
+          |github_pat_[A-Za-z0-9_]{30,}
+          |AKIA[0-9A-Z]{16}
+          |xox[baprs]-[A-Za-z0-9-]{20,}
+          |(postgres(ql)?|mysql|mongodb)://[^\s:/@]+:[^\s@]{6,}@
+          |JWT_SECRET_KEY\s*=\s*[A-Za-z0-9+/_=\-]{24,}
+          )
+        types: [text]
+        # Modelos e README trazem valores de exemplo, como JWT_SECRET_KEY=troque-por-um-valor.
+        exclude: ^(\.pre-commit-config\.yaml|\.github/workflows/segredos\.yml|uv\.lock|README\.md|.*\.example)$
+

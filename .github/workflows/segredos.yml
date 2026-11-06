@@ -1,0 +1,31 @@
+name: Segredos
+
+# Barra arquivo de segredo e credencial colada no código. Os repositórios são públicos, e o hook
+# local (pre-commit) pode ser pulado com --no-verify, então a mesma checagem roda aqui.
+on:
+  pull_request:
+  push:
+    branches: [demo, main]
+
+jobs:
+  segredos:
+    name: Sem segredo no código
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pre-commit
+      - name: Arquivos alterados no PR ou no push
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          pre-commit run arquivo-secreto --from-ref "$BASE" --to-ref HEAD
+          pre-commit run segredo-no-conteudo --from-ref "$BASE" --to-ref HEAD
+          pre-commit run detect-private-key --from-ref "$BASE" --to-ref HEAD

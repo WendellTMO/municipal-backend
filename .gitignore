@@ -98,3 +98,19 @@ loadtest/results/*
 !loadtest/results/.gitkeep
 loadtest/exports/*
 !loadtest/exports/.gitkeep
+
+# Segredos e backups: os repositórios são públicos
+*.keystore
+!debug.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.dump
+*.pass
+*.tfstate
+*.tfstate.backup
+*.tfvars
+clouds.yaml
+buska-backups/
+
