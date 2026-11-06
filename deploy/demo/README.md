@@ -79,3 +79,15 @@ Privacidade. Os arquivos são publicados por `publicar-web-demo.sh` junto com o 
 `location =` do `nginx-demo.conf` precisam estar ativos no nginx da VM. Ao mudar os dados que o app
 coleta ou as regras de uso, atualize o texto, a versão e o Anexo I (histórico) do documento afetado,
 e a constante `TERMOS_DE_USO_VERSAO` em `app/services/convite_service.py`.
+
+## Backup
+
+`backup-diario.sh` roda todo dia às 03:00 pelo cron do usuário `ubuntu` da VM (`crontab -l` mostra) e
+grava `~/backups/diario-*.dump`, mantendo 7. O log fica em `~/backup-diario.log`. Para restaurar:
+`docker exec -i buska_db_prod pg_restore -U "$POSTGRES_USER" -d NOVO_BANCO --no-owner < arquivo.dump`
+(teste num banco novo antes de mexer no de produção).
+
+Os backups e a chave do APK (`~/buska-demo-release.keystore` e `~/buska-demo-keystore.pass`) ficam só na
+VM. `baixar-backups.sh`, rodado no seu computador, copia o dump mais recente e a chave para
+`~/buska-backups`. Sem a chave ninguém atualiza o app por cima de uma versão instalada.
+
