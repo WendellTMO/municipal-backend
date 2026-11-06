@@ -21,6 +21,7 @@ from app.models.base import db
 from app.models.enum import UserRole, UserStatus
 from app.models.password_reset import PasswordResetToken
 from app.models.user import Aluno, User
+from app.services import login_guard
 from app.services.notificacao_service import NotificacaoService
 from app.utils import audit_logger, validate_email, validate_password
 from app.utils.email_sender import send_email
@@ -66,9 +67,12 @@ def login_user(data: dict[str, Any]) -> dict[str, Any]:
         )
         raise UnauthorizedError("Credenciais inválidas")
 
+    login_guard.exigir_sem_trava(email)
+
     user = User.query.filter_by(email=email).first()
 
     if not user:
+        login_guard.registrar_falha(email)
         audit_logger.log_auth(
             action="login_attempt",
             email=email,
@@ -79,6 +83,7 @@ def login_user(data: dict[str, Any]) -> dict[str, Any]:
         raise UnauthorizedError("Credenciais inválidas")
 
     if not check_password_hash(user.senha_hash, password):
+        login_guard.registrar_falha(email)
         audit_logger.log_auth(
             action="login_attempt",
             user_id=str(user.id),
@@ -119,6 +124,8 @@ def login_user(data: dict[str, Any]) -> dict[str, Any]:
                 f"Seu cadastro aguarda a confirmação do responsável legal. "
                 f"Um e-mail foi enviado para {aluno.email_responsavel}."
             )
+
+    login_guard.limpar(email)
 
     access_token = create_access_token(
         identity=str(user.id), additional_claims={"role": str(user.role)}
@@ -221,6 +228,7 @@ def reset_password(token: str, new_password: str) -> None:
         user.senha_hash = generate_password_hash(new_password)
         user.senha_alterada_em = datetime.now(UTC)
         db.session.delete(record)
+    login_guard.limpar(user.email)
     logger.info("Password reset completed for user %s", user.id)
 
 

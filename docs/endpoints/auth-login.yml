@@ -2,7 +2,13 @@
 tags:
   - Authentication
 summary: User Login
-description: Authenticates a user with email and password, returning an access JWT token and user details.
+description: |
+  Authenticates a user with email and password, returning an access JWT token and user details.
+
+  Brute-force protection: per email (existing or not), the 4 first consecutive failures do not lock.
+  The 5th locks for 30 s and each new failure doubles the wait (60 s, 2 min, 4 min, 8 min) up to
+  15 min. While locked, even the right password gets 429, and attempts made during the lock do not
+  count. A successful login or a password reset clears the counter.
 operationId: authLogin
 parameters:
   - in: body
@@ -68,3 +74,5 @@ responses:
         error:
           type: string
           example: User not found
+  429:
+    description: Too many failed attempts for this email. The message says how long to wait.
