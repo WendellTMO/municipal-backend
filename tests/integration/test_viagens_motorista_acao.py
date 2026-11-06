@@ -22,9 +22,9 @@ def test_controlar_viagem_viagem_not_found(motorista):
     assert r.status_code == 404
 
 
-def test_controlar_viagem_iniciar_success(motorista, viagem_futura_agendada_com_motorista):
+def test_controlar_viagem_iniciar_success(motorista, viagem_hoje_agendada_com_motorista):
     r = motorista.client.put(
-        f"/v1/viagens/{viagem_futura_agendada_com_motorista.id}/acao",
+        f"/v1/viagens/{viagem_hoje_agendada_com_motorista.id}/acao",
         json={"acao": "INICIAR"},
     )
     assert r.status_code == 200
@@ -32,6 +32,15 @@ def test_controlar_viagem_iniciar_success(motorista, viagem_futura_agendada_com_
     assert r.get_json()["status"] == "EM_ANDAMENTO"
     assert r.get_json()["inicio_real"] is not None
     assert r.get_json()["horario_fim"] is None
+
+
+def test_controlar_viagem_iniciar_de_outro_dia_e_recusada(motorista, viagem_futura_agendada_com_motorista):
+    r = motorista.client.put(
+        f"/v1/viagens/{viagem_futura_agendada_com_motorista.id}/acao",
+        json={"acao": "INICIAR"},
+    )
+    assert r.status_code == 400
+    assert "no dia dela" in r.get_json()["error"]["message"]
 
 
 def test_controlar_viagem_finalizar_success(motorista, viagem_futura_iniciada_com_motorista):

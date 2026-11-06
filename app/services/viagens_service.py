@@ -592,6 +592,8 @@ def controlar_viagem(user_id: str, viagem_id: str, data: dict[str, Any]) -> Viag
                 raise ValidationError(
                     f"Não é possível iniciar viagem com status {viagem.status.name}"
                 )
+            if viagem.data > date.today():
+                raise ValidationError("A viagem só pode ser iniciada no dia dela")
             viagem.status = StatusViagem.EM_ANDAMENTO
             viagem.inicio_real = datetime.now(UTC)
 

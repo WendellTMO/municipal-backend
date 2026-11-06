@@ -862,11 +862,11 @@ def test_controlar_viagem_motorista_de_outra_prefeitura_404(
 
 
 def test_controlar_viagem_iniciar_muda_status_e_marca_inicio(
-    _db, motorista, viagem_futura_agendada_com_motorista
+    _db, motorista, viagem_hoje_agendada_com_motorista
 ):
     viagem = controlar_viagem(
         str(motorista.user.id),
-        str(viagem_futura_agendada_com_motorista.id),
+        str(viagem_hoje_agendada_com_motorista.id),
         {"acao": "INICIAR"},
     )
 
@@ -875,14 +875,14 @@ def test_controlar_viagem_iniciar_muda_status_e_marca_inicio(
 
 
 def test_controlar_viagem_iniciar_notifica_apenas_confirmados(
-    _db, motorista, aluno, other_aluno, viagem_futura_agendada_com_motorista
+    _db, motorista, aluno, other_aluno, viagem_hoje_agendada_com_motorista
 ):
-    _confirmacao(_db, viagem_futura_agendada_com_motorista, aluno.user.id, confirmacao=True)
-    _confirmacao(_db, viagem_futura_agendada_com_motorista, other_aluno.user.id, confirmacao=False)
+    _confirmacao(_db, viagem_hoje_agendada_com_motorista, aluno.user.id, confirmacao=True)
+    _confirmacao(_db, viagem_hoje_agendada_com_motorista, other_aluno.user.id, confirmacao=False)
 
     controlar_viagem(
         str(motorista.user.id),
-        str(viagem_futura_agendada_com_motorista.id),
+        str(viagem_hoje_agendada_com_motorista.id),
         {"acao": "INICIAR"},
     )
 
@@ -978,10 +978,10 @@ def test_controlar_viagem_gestor_de_outra_prefeitura_404(
 
 
 def test_controlar_viagem_gestor_da_mesma_prefeitura_inicia(
-    _db, gestor, viagem_futura_agendada_com_motorista
+    _db, gestor, viagem_hoje_agendada_com_motorista
 ):
     viagem = controlar_viagem(
-        str(gestor.user.id), str(viagem_futura_agendada_com_motorista.id), {"acao": "INICIAR"}
+        str(gestor.user.id), str(viagem_hoje_agendada_com_motorista.id), {"acao": "INICIAR"}
     )
 
     assert viagem.status == StatusViagem.EM_ANDAMENTO

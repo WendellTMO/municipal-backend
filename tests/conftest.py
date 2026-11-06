@@ -414,6 +414,19 @@ def viagem_futura_agendada_com_motorista(_db, horario_rota, motorista):
 
 
 @pytest.fixture()
+def viagem_hoje_agendada_com_motorista(_db, horario_rota, motorista):
+    v = ViagemFactory(
+        horario_rota_id=horario_rota.id,
+        data=date.today(),
+        status=StatusViagem.AGENDADA,
+        motorista_id=motorista.user.id,
+    )
+    _db.session.add(v)
+    _db.session.commit()
+    return v
+
+
+@pytest.fixture()
 def viagem_futura_iniciada_com_motorista(_db, horario_rota, motorista):
     v = ViagemFactory(
         horario_rota_id=horario_rota.id,
