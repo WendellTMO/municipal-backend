@@ -78,4 +78,10 @@ for i in $(seq 1 15); do
   sleep 2
 done
 rm -f .env.prod
+# Mantém só as 3 imagens mais recentes do backend (a que roda e duas para voltar atrás). Sem isso cada
+# deploy deixa quase 300 MB e o disco da VM chegou a 98%. A imagem em uso nunca sai (rmi recusa).
+docker images --format "{{.Repository}}:{{.Tag}}" buska-backend | tail -n +4 | xargs -r docker rmi >/dev/null 2>&1 || true
+docker image prune -f >/dev/null 2>&1 || true
+df -h / | tail -1
+
 echo "Deploy da demo concluído: $API_IMAGE"
