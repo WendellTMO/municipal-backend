@@ -86,7 +86,7 @@
   <p class="tipo">Documento legal</p>
   <h1>Política de Privacidade</h1>
   <p class="sub">Como o BusKá trata dados pessoais</p>
-  <p class="vigencia"><b>Versão 1.0</b> · em vigor desde 5 de novembro de 2026</p>
+  <p class="vigencia"><b>Versão 1.1</b> · em vigor desde 5 de novembro de 2026</p>
   <p class="irmaos">Leia também os <a href="/termos-de-uso">Termos de Serviço</a>.</p>
 </header>
 
@@ -168,7 +168,7 @@
     <tr><td>Motorista</td><td>Número da CNH, veículo e Rotas conduzidas</td><td>Designar e acompanhar as Viagens</td><td>Execução de política pública (artigo 7, III) e execução de contrato (artigo 7, V)</td></tr>
     <tr><td>Uso do transporte</td><td>Confirmações e cancelamentos de presença, paradas visitadas, horários de início e fim e quilômetros rodados</td><td>Organizar a frota, avisar o Motorista e prestar contas do serviço público</td><td>Execução de política pública (artigo 7, III)</td></tr>
     <tr><td>Localização do Motorista</td><td>Posição do veículo durante a Viagem iniciada</td><td>Mostrar o ônibus aos Alunos com presença confirmada e registrar o trajeto</td><td>Execução de política pública (artigo 7, III)</td></tr>
-    <tr><td>Localização do Aluno</td><td>Posição do celular quando há presença confirmada e a Viagem está em andamento</td><td>Registrar a chegada ao Ponto e o embarque</td><td>Execução de política pública (artigo 7, III) e consentimento, dado na permissão do aparelho</td></tr>
+    <tr><td>Localização do Aluno (só no aparelho)</td><td>Posição do celular, lida no próprio aparelho e não enviada ao servidor</td><td>Mostrar o ponto do Aluno no mapa e perceber que ele está a bordo</td><td>Consentimento, dado na permissão de localização do aparelho (artigo 7, I)</td></tr>
     <tr><td>Aparelho e notificações</td><td>Identificador de notificações (Firebase), preferência de avisos e versão do aplicativo</td><td>Enviar avisos de Viagem</td><td>Execução de contrato (artigo 7, V)</td></tr>
     <tr><td>Relatos de problemas</td><td>Texto, nome da tela, versão do aplicativo, modelo e sistema do aparelho, tamanho da janela, navegador e imagem da tela (opcional)</td><td>Corrigir e melhorar a PLATAFORMA</td><td>Legítimo interesse (artigo 7, IX) e consentimento para a imagem (artigo 7, I)</td></tr>
     <tr><td>Registros técnicos e de segurança</td><td>Endereço IP, data e hora, navegador, entradas, tentativas de entrada, trocas de senha e ações administrativas</td><td>Segurança, prevenção a fraudes e investigação de incidentes</td><td>Cumprimento de obrigação legal (artigo 7, II) e legítimo interesse (artigo 7, IX)</td></tr>
@@ -189,14 +189,14 @@
   <li>Coletamos apenas os dados necessários ao transporte escolar.</li>
   <li>Não exibimos publicidade, não vendemos dados e não fazemos perfilamento comercial.</li>
   <li>Não há perfil público, chat entre usuários nem publicação de conteúdo aberto ao público.</li>
-  <li>A localização do menor só é usada durante a Viagem em que ele confirmou presença.</li>
+  <li>A posição do celular do menor fica no aparelho dele e não é enviada ao servidor.</li>
   <li>O Responsável Legal pode pedir acesso, correção ou eliminação dos dados do menor e revogar o consentimento pelo Canal de Atendimento.</li>
   <li>Os dados de menores são compartilhados somente com a Prefeitura responsável pelo transporte e com o Motorista da Viagem, no necessário ao embarque.</li>
 </ul>
 <p class="c">A PLATAFORMA é de acesso provável por crianças e adolescentes e observa a Lei 15.211/2025. Em caso de dúvida ou de suspeita de violação de direitos de criança ou adolescente, escreva para contato.buska@gmail.com.</p>
 
 <h2 class="cl" id="c7">Dados de localização</h2>
-<p class="c">A localização é usada em duas situações. A primeira é a do celular do Motorista, que envia a posição do ônibus durante a Viagem iniciada, inclusive com a tela bloqueada, para os Alunos com presença confirmada acompanharem a Viagem. A segunda é a do celular do Aluno que confirmou presença, usada enquanto a Viagem está em andamento para registrar a chegada ao Ponto e o embarque.</p>
+<p class="c">A localização é usada em duas situações. A primeira é a do celular do Motorista, que envia a posição do ônibus durante a Viagem iniciada, inclusive com a tela bloqueada, para os Alunos com presença confirmada acompanharem a Viagem. A segunda é a do celular do Aluno, que o aplicativo lê no próprio aparelho para mostrar o ponto dele no mapa e perceber que ele está a bordo. Essa posição não é enviada ao servidor.</p>
 <p class="c">O envio da posição do Motorista termina quando a Viagem é finalizada. A permissão de localização é concedida e pode ser retirada nas configurações do aparelho a qualquer momento.</p>
 <p class="c">A localização não é usada para publicidade nem para perfilamento comercial e não é vendida.</p>
 
@@ -225,6 +225,7 @@
     <tr><td>Google (Firebase Cloud Messaging)</td><td>Identificador do aparelho e o texto da notificação</td><td>Entregar avisos no aparelho</td></tr>
     <tr><td>Provedor de envio de e-mail</td><td>Nome, e-mail e conteúdo da mensagem</td><td>Enviar Convites, consentimento de menores e avisos de segurança</td></tr>
     <tr><td>OpenStreetMap</td><td>Endereço IP do aparelho e a região do mapa pedida</td><td>Carregar o mapa</td></tr>
+    <tr><td>Google Fonts e unpkg.com (somente no site)</td><td>Endereço IP e navegador do visitante, ao abrir o site</td><td>Entregar as fontes e os estilos da página</td></tr>
     <tr><td>Have I Been Pwned</td><td>Apenas 5 caracteres de um código derivado da senha, nunca a senha</td><td>Recusar senhas que já vazaram, na troca de senha</td></tr>
     <tr><td>Provedor de hospedagem do servidor</td><td>Todos os dados armazenados, de forma criptografada em trânsito</td><td>Manter a PLATAFORMA no ar</td></tr>
     <tr><td>Autoridades</td><td>O que a ordem ou a lei exigir</td><td>Cumprir ordem judicial ou obrigação legal</td></tr>
@@ -234,7 +235,7 @@
 <p class="c">Exigimos dos prestadores de serviço que tratem os dados somente para a finalidade contratada e com padrão de segurança compatível com o nosso.</p>
 
 <h2 class="cl" id="c10">Transferência internacional</h2>
-<p class="c">Alguns prestadores, como o Google (Firebase) e serviços de mapas, podem tratar dados em servidores fora do Brasil. Nesses casos a transferência segue o artigo 33 da LGPD, com a adoção de garantias adequadas de proteção, e se limita ao necessário para o serviço contratado.</p>
+<p class="c">Alguns prestadores, como o Google (Firebase e Google Fonts), o unpkg.com e serviços de mapas, podem tratar dados em servidores fora do Brasil. Nesses casos a transferência segue o artigo 33 da LGPD, com a adoção de garantias adequadas de proteção, e se limita ao necessário para o serviço contratado.</p>
 
 <h2 class="cl" id="c11">Armazenamento e prazos</h2>
 <p class="c">Guardamos os dados pessoais enquanto a Conta estiver ativa e pelo tempo necessário para cumprir as finalidades desta Política, prestar contas do serviço público, cumprir obrigações legais e exercer direitos em processos judiciais ou administrativos.</p>
@@ -278,7 +279,7 @@
 
 <h2 class="cl" id="c15">Cookies e armazenamento local</h2>
 <p class="c">O site usa o armazenamento local do navegador para manter a sua sessão e as suas preferências, como o aviso de boas-vindas já visto. Esses itens são necessários ao funcionamento e ficam apenas no seu aparelho.</p>
-<p class="c">A PLATAFORMA não usa cookies de publicidade nem ferramentas de análise de terceiros. O navegador permite apagar esses dados quando o usuário quiser, e isso encerra a sessão.</p>
+<p class="c">A PLATAFORMA não usa cookies de publicidade nem ferramentas de análise de terceiros. Ao abrir o site, o navegador baixa fontes e estilos do Google Fonts e do unpkg.com, que recebem o endereço IP do visitante. O navegador permite apagar os dados guardados quando o usuário quiser, e isso encerra a sessão.</p>
 
 <h2 class="cl" id="c16">Serviços e sites de terceiros</h2>
 <p class="c">A PLATAFORMA usa serviços de terceiros e pode conter links para outros sites. Cada um possui a sua própria política de privacidade, que o usuário deve ler. O TITULAR não tem controle sobre as práticas desses terceiros e não responde por elas. Esta Política se limita à PLATAFORMA.</p>
@@ -304,6 +305,7 @@
   <div class="tabela"><table>
     <thead><tr><th>Versão</th><th>Vigência</th><th>Mudança</th></tr></thead>
     <tbody>
+      <tr><td>1.1</td><td>5 de novembro de 2026</td><td>Corrige o tratamento da localização do Aluno, que fica no aparelho e não vai ao servidor, e inclui o Google Fonts e o unpkg.com entre os serviços do site.</td></tr>
       <tr><td>1.0</td><td>5 de novembro de 2026</td><td>Primeira versão da Política de Privacidade, separada dos Termos de Serviço.</td></tr>
     </tbody>
   </table></div>
