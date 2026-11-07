@@ -114,3 +114,6 @@ loadtest/exports/*
 clouds.yaml
 buska-backups/
 
+# Respostas do formulário e relatórios da importação de convites (dados pessoais de alunos)
+*respostas*.csv
+*-relatorio-*.csv
