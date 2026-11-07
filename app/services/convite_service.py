@@ -46,7 +46,7 @@ LIMITE_ENVIO_POR_EXECUCAO = 50
 
 # Versão dos documentos publicados em /termos-de-uso e /politica-de-privacidade. O aceite grava
 # esta versão no convite. Troque junto com o Anexo I (histórico) dos documentos.
-TERMOS_DE_USO_VERSAO = "1.1"
+TERMOS_DE_USO_VERSAO = "1.2"
 TERMOS_DE_USO_TEXTO = (
     "Ao continuar, você declara que leu e concorda com os Termos de Serviço e com a Política de "
     "Privacidade do BusKá. Usamos seus dados (nome, e-mail, CPF, endereço e a localização durante "
