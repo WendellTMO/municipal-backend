@@ -1,5 +1,6 @@
 import uuid
 from datetime import date
+from typing import Any
 
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -78,6 +79,24 @@ class Gestor(User):
     }
 
 
+# Instituições além da principal (Aluno.instituicao_id): quem estuda em mais de um lugar.
+aluno_instituicao = db.Table(
+    "aluno_instituicao",
+    db.Column(
+        "aluno_id",
+        UUID(as_uuid=True),
+        db.ForeignKey("usuario.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    db.Column(
+        "instituicao_id",
+        UUID(as_uuid=True),
+        db.ForeignKey("instituicao.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
+
 class Aluno(User):
     __tablename__ = "aluno"
 
@@ -100,6 +119,7 @@ class Aluno(User):
     ponto_casa_id = db.Column(UUID(as_uuid=True), db.ForeignKey("ponto.id"))
 
     instituicao = db.relationship("Instituicao")
+    instituicoes_extras = db.relationship("Instituicao", secondary=aluno_instituicao)
     ponto_casa = db.relationship("Ponto")
     # Endereço de moradia (Endereco.aluno_id). O banco apaga em cascata junto com a conta.
     endereco_moradia = db.relationship(
@@ -114,6 +134,17 @@ class Aluno(User):
     __mapper_args__ = {
         "polymorphic_identity": UserRole.ALUNO,
     }
+
+    @property
+    def instituicoes(self) -> list[Any]:
+        """Principal primeiro, depois as extras (sem repetir)."""
+        lista: list[Any] = []
+        if self.instituicao is not None:
+            lista.append(self.instituicao)
+        for extra in self.instituicoes_extras:
+            if extra.id != self.instituicao_id:
+                lista.append(extra)
+        return lista
 
     @property
     def is_minor(self) -> bool:

@@ -358,6 +358,24 @@ def _trocar_instituicao(aluno: Aluno, instituicao_id: Any) -> None:
     aluno.instituicao_id = instituicao.id
 
 
+def _definir_instituicoes(aluno: Aluno, instituicao_ids: list[Any]) -> None:
+    """A primeira da lista vira a principal e as outras ficam como extras."""
+    escolhidas: list[Instituicao] = []
+    vistos: set[Any] = set()
+    for inst_id in instituicao_ids:
+        if inst_id in vistos:
+            continue
+        vistos.add(inst_id)
+        instituicao = db.session.get(Instituicao, inst_id)
+        if instituicao is None or instituicao.prefeitura_id != aluno.prefeitura_id:
+            raise ValidationError(
+                "Instituição não encontrada.", details={"field": "instituicao_ids"}
+            )
+        escolhidas.append(instituicao)
+    aluno.instituicao_id = escolhidas[0].id
+    aluno.instituicoes_extras = escolhidas[1:]
+
+
 def update_me(user_id: str, data: dict[str, Any]) -> Aluno:
     """
     Atualiza perfil do aluno.
@@ -374,7 +392,9 @@ def update_me(user_id: str, data: dict[str, Any]) -> Aluno:
             if field in data:
                 setattr(aluno, field, data[field])
 
-        if data.get("instituicao_id"):
+        if data.get("instituicao_ids"):
+            _definir_instituicoes(aluno, data["instituicao_ids"])
+        elif data.get("instituicao_id"):
             _trocar_instituicao(aluno, data["instituicao_id"])
 
         # O schema entrega None quando o campo não vem no payload: nada a mudar.

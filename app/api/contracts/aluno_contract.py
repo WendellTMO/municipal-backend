@@ -89,6 +89,9 @@ def register_models(api):
             "matricula": fields.String(description="Matrícula"),
             "escola": fields.String(description="Nome da escola"),
             "instituicao_id": fields.String(description="UUID da instituição"),
+            "instituicao_ids": fields.List(
+                fields.String, description="Todas as instituições (a primeira é a principal)"
+            ),
             "status": fields.String(
                 description="Status (PENDING_SIGNUP, PENDING_APPROVAL, ACTIVE, DISABLED)"
             ),
