@@ -58,29 +58,42 @@ def passo_numerado(numero: int, titulo: str, corpo_html: str) -> str:
     )
 
 
-def _cartao_plataforma(rotulo: str, subtitulo: str, corpo_html: str) -> str:
-    """Quadro de uma plataforma (Android ou iPhone) dentro do passo de instalar."""
+def _cartao_plataforma(etiqueta: str, cor: str, titulo: str, explicacao: str, corpo_html: str) -> str:
+    """Quadro de uma plataforma (Android ou iPhone): faixa colorida, etiqueta, aviso e passos."""
     return (
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="margin:0 0 16px 0;"><tr>'
+        f'<td style="border:1px solid #D5DDEA;border-top:5px solid {cor};border-radius:12px;'
+        'background-color:#FFFFFF;padding:16px 16px 6px 16px;">'
+        f'<span style="display:inline-block;background-color:{cor};color:#FFFFFF;font-size:11px;'
+        'font-weight:700;letter-spacing:1px;text-transform:uppercase;border-radius:20px;'
+        f'padding:3px 10px;">{escape(etiqueta)}</span>'
+        f'<p style="margin:8px 0 10px 0;font-size:18px;line-height:24px;font-weight:700;color:#0F1B33;">'
+        f"{escape(titulo)}</p>"
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
         'style="margin:0 0 14px 0;"><tr>'
-        f'<td style="border:1px solid #D5DDEA;border-radius:12px;background-color:#F8FAFD;'
-        'padding:16px 16px 4px 16px;">'
-        f'<p style="margin:0 0 2px 0;font-size:16px;line-height:22px;font-weight:700;color:{COR_AZUL};">'
-        f"{escape(rotulo)}</p>"
-        f'<p style="margin:0 0 6px 0;font-size:13px;line-height:19px;color:#5B6B85;">{escape(subtitulo)}</p>'
+        '<td style="background-color:#FFF7E0;border-left:3px solid #F4A402;border-radius:6px;'
+        'padding:10px 12px;font-size:13px;line-height:19px;color:#6B5200;">'
+        f"{escape(explicacao)}</td></tr></table>"
         f"{corpo_html}</td></tr></table>"
     )
 
 
 def _lista_de_acoes(acoes: list[str]) -> str:
-    """Linhas curtas "1. ..." para o que fazer, uma por toque."""
-    html = ""
+    """Passos curtos, cada um com o número num círculo claro."""
+    html = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
     for posicao, acao in enumerate(acoes, start=1):
         html += (
-            '<p style="margin:0 0 10px 0;font-size:14px;line-height:21px;color:#2B3647;">'
-            f"<strong>{posicao}.</strong> {escape(acao)}</p>"
+            "<tr>"
+            '<td width="32" valign="top" style="padding:0 0 12px 0;">'
+            f'<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>'
+            '<td width="24" height="24" align="center" valign="middle" bgcolor="#E6EDFB" '
+            'style="width:24px;height:24px;border-radius:12px;font-size:13px;line-height:24px;'
+            f'font-weight:700;color:{COR_AZUL};">{posicao}</td></tr></table></td>'
+            '<td valign="top" style="padding:0 0 12px 0;font-size:14px;line-height:21px;'
+            f'color:#2B3647;">{escape(acao)}</td></tr>'
         )
-    return html
+    return html + "</table>"
 
 
 def _passos_convite(
@@ -94,8 +107,11 @@ def _passos_convite(
     if validade:
         passo1 += f'<p style="{cinza}text-align:center;">{escape(validade)}</p>'
     android = _cartao_plataforma(
+        "Android",
+        "#2E9E5B",
         "Android: pelo app",
-        "Ainda não temos o registro oficial do app na Play Store. Por isso você instala o app por um arquivo, em poucos toques.",
+        "Ainda não temos o registro oficial do app na Play Store. "
+        "Por isso você instala o app por um arquivo, em poucos toques.",
         _botao("Baixar o app para Android", url_apk)
         + _lista_de_acoes(
             [
@@ -107,9 +123,12 @@ def _passos_convite(
         ),
     )
     iphone = _cartao_plataforma(
+        "iPhone",
+        "#1F2937",
         "iPhone: pelo navegador",
-        "Ainda não temos a conta da Apple necessária para publicar o app na App Store. Por isso, no iPhone, você usa o BusKá pelo navegador (Safari), sem instalar nada.",
-        _botao("Abrir o BusKá no Safari", url_web)
+        "Ainda não temos a conta da Apple necessária para publicar o app na App Store. "
+        "Por isso, no iPhone, você usa o BusKá pelo navegador (Safari), sem instalar nada.",
+        _botao("Abrir o BusKá no navegador", url_web)
         + _lista_de_acoes(
             [
                 "Toque no botão acima para abrir o BusKá no Safari.",
@@ -125,10 +144,15 @@ def _passos_convite(
         "É assim que você recebe os avisos do ônibus.</p>"
     )
     ajuda = (
-        f'<p style="{cinza}margin-top:12px;text-align:center;">Dúvidas ou algo não funcionou? '
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="margin:16px 0 20px 0;"><tr>'
+        '<td align="center" style="background-color:#EAF0FC;border-radius:12px;padding:16px;'
+        'font-size:14px;line-height:21px;color:#2B3647;">'
+        '<strong style="color:#0F1B33;">Precisa de ajuda?</strong><br>'
         "Escreva para "
         f'<a href="mailto:contato.buska@gmail.com" style="color:{COR_AZUL};">contato.buska@gmail.com</a>. '
-        "Dentro do app, o botão Enviar feedback leva a sua opinião direto para a equipe.</p>"
+        "Dentro do app, o botão Enviar feedback leva a sua opinião direto para a equipe."
+        "</td></tr></table>"
     )
     return (
         passo_numerado(1, "Conclua seu cadastro", passo1)

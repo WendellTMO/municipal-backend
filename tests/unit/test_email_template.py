@@ -122,7 +122,7 @@ def test_template_passos_na_ordem_com_links_e_numeros():
     assert "Entre com o e-mail e a senha que você criou no cadastro." in pagina
     assert "Android: pelo app" in pagina and "iPhone: pelo navegador" in pagina
     assert 'href="https://buska.test"' in pagina
-    assert "Abrir o BusKá no Safari" in pagina
+    assert "Abrir o BusKá no navegador" in pagina
     assert "Adicionar à Tela de Início" in pagina
     assert "contato.buska@gmail.com" in pagina
     assert "—" not in pagina and "–" not in pagina

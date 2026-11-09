@@ -502,7 +502,7 @@ def _montar_email(convite: Convite, link: str, pin: str, frontend_url: str) -> t
         "IPHONE (pelo navegador):\n"
         "Ainda não temos a conta da Apple necessária para publicar o app na App Store. "
         "Por isso, no iPhone, você usa o BusKá pelo navegador (Safari), sem instalar nada.\n"
-        f"- Abra no Safari: {url_web}\n"
+        f"- Abra no navegador (Safari): {url_web}\n"
         "- Para ter um ícone na tela inicial, toque em Compartilhar e depois em "
         "Adicionar à Tela de Início.\n\n"
         "3. Abra o app e entre\n"
