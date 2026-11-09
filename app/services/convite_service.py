@@ -482,9 +482,11 @@ def _montar_email(convite: Convite, link: str, pin: str, frontend_url: str) -> t
     url_web = frontend_url.rstrip("/")
     url_apk = f"{url_web}/buska.apk"
     texto = (
-        f"Olá, {convite.nome}!\n\n"
-        "Você foi convidado(a) para usar o BusKá, o app do transporte escolar.\n"
-        "Esta é uma versão de testes. Siga os passos abaixo.\n\n"
+        f"Oi, {convite.nome}!\n\n"
+        "Que bom ter você com a gente! Você foi convidado(a) para usar o BusKá, "
+        "o app que ajuda a acompanhar o seu transporte escolar.\n"
+        "Esta é uma versão de testes e a sua opinião vai ajudar muito a melhorar o app. "
+        "Siga os passos abaixo, são rapidinhos.\n\n"
         "1. Conclua seu cadastro\n"
         "Abra o link e informe o código de acesso (PIN). O código é pessoal.\n"
         f"Link: {link}\n"
@@ -509,16 +511,19 @@ def _montar_email(convite: Convite, link: str, pin: str, frontend_url: str) -> t
         "Entre com o e-mail e a senha que você criou no cadastro. "
         "Se o app pedir permissão para enviar notificações, aceite: "
         "é assim que você recebe os avisos do ônibus.\n\n"
-        "Dúvidas ou algo não funcionou? Escreva para contato.buska@gmail.com. "
-        "Dentro do app, o botão Enviar feedback leva a sua opinião direto para a equipe."
+        "Qualquer dúvida ou problema, escreva para contato.buska@gmail.com. "
+        "Dentro do app, o botão Enviar feedback leva a sua opinião direto para a equipe.\n\n"
+        "Bem-vindo(a) a bordo! Equipe BusKá"
     )
     pagina = montar_email_html(
-        titulo="Seu convite para o BusKá",
+        titulo="Bem-vindo(a) ao BusKá!",
         preheader="Conclua seu cadastro no BusKá com o link e o código de acesso.",
-        saudacao=f"Olá, {convite.nome}!",
+        saudacao=f"Oi, {convite.nome}! 👋",
         paragrafos=[
-            "Você foi convidado(a) para usar o BusKá, o app do transporte escolar.",
-            "Esta é uma versão de testes. Siga os passos abaixo para começar a usar.",
+            "Que bom ter você com a gente! Você foi convidado(a) para usar o BusKá, "
+            "o app que ajuda a acompanhar o seu transporte escolar.",
+            "Esta é uma versão de testes e a sua opinião vai ajudar muito a melhorar o app. "
+            "Siga os passos abaixo, são rapidinhos.",
         ],
         botao_texto="Concluir meu cadastro",
         botao_url=link,

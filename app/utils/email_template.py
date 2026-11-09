@@ -101,7 +101,11 @@ def _passos_convite(
 ) -> str:
     url_apk, url_web = links_app
     cinza = "margin:0 0 12px 0;font-size:13px;line-height:19px;color:#5B6B85;"
-    passo1 = _botao(botao_texto, botao_url)
+    passo1 = (
+        '<p style="margin:0 0 4px 0;font-size:15px;line-height:22px;color:#2B3647;">'
+        "Toque no botão e digite o código quando ele pedir. É rapidinho.</p>"
+        + _botao(botao_texto, botao_url)
+    )
     if pin:
         passo1 += _bloco_pin(pin)
     if validade:
@@ -109,7 +113,7 @@ def _passos_convite(
     android = _cartao_plataforma(
         "Android",
         "#2E9E5B",
-        "Android: pelo app",
+        "🤖 Android: pelo app",
         "Ainda não temos o registro oficial do app na Play Store. "
         "Por isso você instala o app por um arquivo, em poucos toques.",
         _botao("Baixar o app para Android", url_apk)
@@ -125,7 +129,7 @@ def _passos_convite(
     iphone = _cartao_plataforma(
         "iPhone",
         "#1F2937",
-        "iPhone: pelo navegador",
+        "🍎 iPhone: pelo navegador",
         "Ainda não temos a conta da Apple necessária para publicar o app na App Store. "
         "Por isso, no iPhone, você usa o BusKá pelo navegador (Safari), sem instalar nada.",
         _botao("Abrir o BusKá no navegador", url_web)
@@ -148,7 +152,7 @@ def _passos_convite(
         'style="margin:16px 0 20px 0;"><tr>'
         '<td align="center" style="background-color:#EAF0FC;border-radius:12px;padding:16px;'
         'font-size:14px;line-height:21px;color:#2B3647;">'
-        '<strong style="color:#0F1B33;">Precisa de ajuda?</strong><br>'
+        '<strong style="color:#0F1B33;">Ficou com dúvida? 💬</strong><br>'
         "Escreva para "
         f'<a href="mailto:contato.buska@gmail.com" style="color:{COR_AZUL};">contato.buska@gmail.com</a>. '
         "Dentro do app, o botão Enviar feedback leva a sua opinião direto para a equipe."
@@ -159,6 +163,8 @@ def _passos_convite(
         + passo_numerado(2, "Instale o BusKá", android + iphone)
         + passo_numerado(3, "Abra o app e entre", passo3)
         + ajuda
+        + '<p style="margin:0 0 20px 0;font-size:18px;line-height:26px;font-weight:700;'
+        f'color:{COR_AZUL};text-align:center;">Bem-vindo(a) a bordo! 🚌</p>'
     )
 
 
