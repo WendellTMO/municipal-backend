@@ -95,7 +95,7 @@ def _passos_convite(
         passo1 += f'<p style="{cinza}text-align:center;">{escape(validade)}</p>'
     android = _cartao_plataforma(
         "Android: pelo app",
-        "Instale o aplicativo no seu celular.",
+        "Ainda não temos o registro oficial do app na Play Store. Por isso você instala o app por um arquivo, em poucos toques.",
         _botao("Baixar o app para Android", url_apk)
         + _lista_de_acoes(
             [
@@ -108,7 +108,7 @@ def _passos_convite(
     )
     iphone = _cartao_plataforma(
         "iPhone: pelo navegador",
-        "Não precisa instalar nada. Use o Safari.",
+        "Ainda não temos a conta da Apple necessária para publicar o app na App Store. Por isso, no iPhone, você usa o BusKá pelo navegador (Safari), sem instalar nada.",
         _botao("Abrir o BusKá no Safari", url_web)
         + _lista_de_acoes(
             [
