@@ -230,8 +230,8 @@ def _resolver_pontos(
 ) -> tuple[Any, Any, dict[str, Any]]:
     """Devolve (embarque, destino, escolhas a lembrar) conforme o sentido da viagem.
 
-    IDA: o aluno escolhe onde embarca e desce na instituição. VOLTA: parte da instituição
-    e o aluno escolhe onde desce. CIRCULAR: o aluno escolhe os dois, na rota.
+    IDA: o aluno escolhe onde embarca e desce na instituição. VOLTA: parte da instituição (ou de
+    outro ponto da rota, se o aluno escolher) e o aluno escolhe onde desce. CIRCULAR: o aluno escolhe os dois, na rota.
     A instituição é a do aluno, ou outra da rota se ele escolher (`instituicao_id`).
     """
     ponto_instituicao = _ponto_da_instituicao_da_viagem(aluno, horario, data)
@@ -258,7 +258,13 @@ def _resolver_pontos(
     if horario.sentido == SentidoViagem.IDA:
         destino = ponto_instituicao
     elif horario.sentido == SentidoViagem.VOLTA:
-        embarque = ponto_instituicao
+        # Parte da instituição, a menos que o aluno escolha embarcar em outro ponto da rota nesta
+        # viagem. Essa escolha não vira padrão: o padrão de embarque é o da ida.
+        embarque_escolhido = data.get("ponto_embarque_id")
+        if embarque_escolhido is not None:
+            embarque = _ponto_da_rota(horario.rota_id, embarque_escolhido, "ponto_embarque_id")
+        else:
+            embarque = ponto_instituicao
     if ponto_instituicao is None and horario.sentido != SentidoViagem.CIRCULAR:
         raise ValidationError(
             "Seu cadastro não tem instituição com ponto de parada. Fale com o gestor.",

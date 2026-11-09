@@ -145,6 +145,37 @@ def test_volta_com_lembrar_grava_desembarque_padrao(_db, cenario, rota, motorist
     assert _confirmar(cenario, segunda).get_json()["ponto_destino"] == ponto_b.apelido
 
 
+def test_volta_aluno_pode_embarcar_em_outro_ponto_da_rota_sem_virar_padrao(
+    _db, cenario, rota, motorista, ponto, ponto_b
+):
+    viagem = _viagem(_db, rota, motorista, SentidoViagem.VOLTA)
+    r = _confirmar(
+        cenario,
+        viagem,
+        ponto_embarque_id=str(ponto.id),
+        ponto_desembarque_id=str(ponto_b.id),
+        lembrar_escolha=True,
+    )
+    assert r.status_code == 200, r.get_data(as_text=True)
+    assert r.get_json()["ponto_embarque"] == ponto.apelido
+    assert r.get_json()["ponto_destino"] == ponto_b.apelido
+    inscricao = _inscricao(_db, rota, cenario)
+    assert inscricao.ponto_embarque_padrao_id is None
+    assert inscricao.ponto_desembarque_padrao_id == ponto_b.id
+
+
+def test_volta_embarque_fora_da_rota_da_400(_db, cenario, rota, motorista, ponto_b, ponto_fora):
+    viagem = _viagem(_db, rota, motorista, SentidoViagem.VOLTA)
+    r = _confirmar(
+        cenario,
+        viagem,
+        ponto_embarque_id=str(ponto_fora.id),
+        ponto_desembarque_id=str(ponto_b.id),
+    )
+    assert r.status_code == 400
+    assert r.get_json()["error"]["details"]["field"] == "ponto_embarque_id"
+
+
 def test_volta_ignora_ponto_de_casa_e_exige_desembarque(_db, cenario, rota, motorista):
     viagem = _viagem(_db, rota, motorista, SentidoViagem.VOLTA)
     r = _confirmar(cenario, viagem)
