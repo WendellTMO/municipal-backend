@@ -63,6 +63,8 @@ class AlunoMeUpdateRequestSchema(BaseSchema):
     matricula = fields.String(allow_none=True, validate=validate_optional_string)
     # Troca de instituição: só vale uma já cadastrada na prefeitura do aluno (ver update_me).
     instituicao_id = fields.UUID()
+    # Lista completa de instituições: a primeira vira a principal, as demais são extras.
+    instituicao_ids = fields.List(fields.UUID(), validate=validate.Length(min=1, max=10))
     nome_responsavel = fields.String(allow_none=True, validate=validate_optional_string)
     cpf_responsavel = fields.String(allow_none=True, validate=validate_optional_cpf)
 
@@ -80,6 +82,11 @@ class AlunoGuardianConsentPublicSchema(BaseSchema):
     guardian_consented_at = fields.DateTime(dump_default=None)
 
 
+class InstituicaoResumoSchema(BaseSchema):
+    id = fields.UUID()
+    nome = fields.String()
+
+
 class AlunoResponseSchema(BaseSchema):
     id = fields.UUID()
     nome = fields.String()
@@ -89,6 +96,7 @@ class AlunoResponseSchema(BaseSchema):
     matricula = fields.String()
     escola = fields.String(attribute="instituicao.nome", dump_default=None)
     instituicao_id = fields.UUID(dump_default=None)
+    instituicoes = fields.List(fields.Nested(InstituicaoResumoSchema), dump_default=[])
 
     status = fields.String(attribute="status.value", dump_default=None)
     signup_completed_at = fields.DateTime(dump_default=None)
