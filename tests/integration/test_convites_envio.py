@@ -62,10 +62,10 @@ def test_envio_gera_link_e_pin_que_funcionam(gestor, client, mail, _db):
     assert "—" not in texto and "–" not in texto
     assert "<a href" in _corpo(smtp, "html")
     assert "https://app.exemplo.test/buska.apk" in texto
-    assert "No iPhone, o app chega em breve. Por enquanto use o BusKá pelo navegador: " in texto
+    assert "IPHONE (pelo navegador)" in texto and "Abra no Safari: https://app.exemplo.test" in texto
     posicoes = [texto.index(f"{n}. ") for n in ("1", "2", "3")]
     assert posicoes == sorted(posicoes)
-    assert "1. Conclua seu cadastro" in texto and "2. Baixe o app" in texto
+    assert "1. Conclua seu cadastro" in texto and "2. Instale o BusKá" in texto
     assert "3. Abra o app e entre" in texto
     html = _corpo(smtp, "html")
     assert 'href="https://app.exemplo.test/buska.apk"' in html

@@ -484,20 +484,29 @@ def _montar_email(convite: Convite, link: str, pin: str, frontend_url: str) -> t
     texto = (
         f"Olá, {convite.nome}!\n\n"
         "Você foi convidado(a) para usar o BusKá, o app do transporte escolar.\n"
-        "Siga os passos abaixo.\n\n"
+        "Esta é uma versão de testes. Siga os passos abaixo.\n\n"
         "1. Conclua seu cadastro\n"
         "Abra o link e informe o código de acesso (PIN). O código é pessoal.\n"
         f"Link: {link}\n"
         f"Código de acesso (PIN): {pin}\n"
         f"O convite vale por {VALIDADE_DIAS} dias. "
         "Se você não esperava este e-mail, ignore esta mensagem.\n\n"
-        "2. Baixe o app\n"
-        f"Android: {url_apk}\n"
-        "Ao instalar, o Android pode pedir para permitir a instalação de fontes desconhecidas.\n\n"
+        "2. Instale o BusKá\n"
+        "ANDROID (pelo app):\n"
+        f"- Baixe o arquivo: {url_apk}\n"
+        "- Abra o arquivo baixado. Se o Android avisar sobre fontes desconhecidas, "
+        "toque em Configurações e permita a instalação.\n"
+        "- Toque em Instalar e depois em Abrir.\n"
+        "IPHONE (pelo navegador):\n"
+        f"- Abra no Safari: {url_web}\n"
+        "- Para ter um ícone na tela inicial, toque em Compartilhar e depois em "
+        "Adicionar à Tela de Início.\n\n"
         "3. Abra o app e entre\n"
-        "Entre com o e-mail e a senha que você criou no cadastro.\n\n"
-        "No iPhone, o app chega em breve. "
-        f"Por enquanto use o BusKá pelo navegador: {url_web}"
+        "Entre com o e-mail e a senha que você criou no cadastro. "
+        "Se o app pedir permissão para enviar notificações, aceite: "
+        "é assim que você recebe os avisos do ônibus.\n\n"
+        "Dúvidas ou algo não funcionou? Escreva para contato.buska@gmail.com. "
+        "Dentro do app, o botão Enviar feedback leva a sua opinião direto para a equipe."
     )
     pagina = montar_email_html(
         titulo="Seu convite para o BusKá",
@@ -505,7 +514,7 @@ def _montar_email(convite: Convite, link: str, pin: str, frontend_url: str) -> t
         saudacao=f"Olá, {convite.nome}!",
         paragrafos=[
             "Você foi convidado(a) para usar o BusKá, o app do transporte escolar.",
-            "Siga os passos abaixo para começar a usar.",
+            "Esta é uma versão de testes. Siga os passos abaixo para começar a usar.",
         ],
         botao_texto="Concluir meu cadastro",
         botao_url=link,

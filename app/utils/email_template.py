@@ -58,6 +58,31 @@ def passo_numerado(numero: int, titulo: str, corpo_html: str) -> str:
     )
 
 
+def _cartao_plataforma(rotulo: str, subtitulo: str, corpo_html: str) -> str:
+    """Quadro de uma plataforma (Android ou iPhone) dentro do passo de instalar."""
+    return (
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="margin:0 0 14px 0;"><tr>'
+        f'<td style="border:1px solid #D5DDEA;border-radius:12px;background-color:#F8FAFD;'
+        'padding:16px 16px 4px 16px;">'
+        f'<p style="margin:0 0 2px 0;font-size:16px;line-height:22px;font-weight:700;color:{COR_AZUL};">'
+        f"{escape(rotulo)}</p>"
+        f'<p style="margin:0 0 6px 0;font-size:13px;line-height:19px;color:#5B6B85;">{escape(subtitulo)}</p>'
+        f"{corpo_html}</td></tr></table>"
+    )
+
+
+def _lista_de_acoes(acoes: list[str]) -> str:
+    """Linhas curtas "1. ..." para o que fazer, uma por toque."""
+    html = ""
+    for posicao, acao in enumerate(acoes, start=1):
+        html += (
+            '<p style="margin:0 0 10px 0;font-size:14px;line-height:21px;color:#2B3647;">'
+            f"<strong>{posicao}.</strong> {escape(acao)}</p>"
+        )
+    return html
+
+
 def _passos_convite(
     botao_texto: str, botao_url: str, pin: str | None, validade: str | None, links_app: tuple
 ) -> str:
@@ -68,25 +93,48 @@ def _passos_convite(
         passo1 += _bloco_pin(pin)
     if validade:
         passo1 += f'<p style="{cinza}text-align:center;">{escape(validade)}</p>'
-    passo2 = (
+    android = _cartao_plataforma(
+        "Android: pelo app",
+        "Instale o aplicativo no seu celular.",
         _botao("Baixar o app para Android", url_apk)
-        + f'<p style="{cinza}">Ao instalar, o Android pode pedir para permitir a instalação '
-        "de fontes desconhecidas.</p>"
+        + _lista_de_acoes(
+            [
+                "Toque no botão acima e baixe o arquivo.",
+                "Abra o arquivo baixado. Se o Android avisar sobre fontes desconhecidas, "
+                "toque em Configurações e permita a instalação.",
+                "Toque em Instalar e depois em Abrir.",
+            ]
+        ),
+    )
+    iphone = _cartao_plataforma(
+        "iPhone: pelo navegador",
+        "Não precisa instalar nada. Use o Safari.",
+        _botao("Abrir o BusKá no Safari", url_web)
+        + _lista_de_acoes(
+            [
+                "Toque no botão acima para abrir o BusKá no Safari.",
+                "Para ter um ícone na tela inicial, toque em Compartilhar e depois em "
+                "Adicionar à Tela de Início.",
+            ]
+        ),
     )
     passo3 = (
         '<p style="margin:0 0 12px 0;font-size:15px;line-height:22px;color:#2B3647;">'
         "Entre com o e-mail e a senha que você criou no cadastro.</p>"
+        f'<p style="{cinza}">Se o app pedir permissão para enviar notificações, aceite. '
+        "É assim que você recebe os avisos do ônibus.</p>"
     )
-    nota_iphone = (
-        f'<p style="{cinza}margin-top:12px;">No iPhone, o app chega em breve. '
-        f'Por enquanto use o BusKá pelo navegador: <a href="{escape(url_web)}" '
-        f'style="color:{COR_AZUL};">{escape(url_web)}</a></p>'
+    ajuda = (
+        f'<p style="{cinza}margin-top:12px;text-align:center;">Dúvidas ou algo não funcionou? '
+        "Escreva para "
+        f'<a href="mailto:contato.buska@gmail.com" style="color:{COR_AZUL};">contato.buska@gmail.com</a>. '
+        "Dentro do app, o botão Enviar feedback leva a sua opinião direto para a equipe.</p>"
     )
     return (
         passo_numerado(1, "Conclua seu cadastro", passo1)
-        + passo_numerado(2, "Baixe o app", passo2)
+        + passo_numerado(2, "Instale o BusKá", android + iphone)
         + passo_numerado(3, "Abra o app e entre", passo3)
-        + nota_iphone
+        + ajuda
     )
 
 

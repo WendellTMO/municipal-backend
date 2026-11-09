@@ -105,23 +105,26 @@ def test_template_passos_na_ordem_com_links_e_numeros():
         links_app=("https://buska.test/buska.apk", "https://buska.test"),
     )
     posicoes = []
-    for titulo in ["Conclua seu cadastro", "Baixe o app", "Abra o app e entre"]:
+    for titulo in ["Conclua seu cadastro", "Instale o BusKá", "Abra o app e entre"]:
         assert pagina.count(titulo) == 1
         posicoes.append(pagina.index(titulo))
     assert posicoes == sorted(posicoes)
-    assert pagina.index("483920") < pagina.index("Baixe o app")
+    assert pagina.index("483920") < pagina.index("Instale o BusKá")
     for numero in "123":
         assert (
             f"font-weight:700;color:#FFFFFF;font-family:Inter, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;\">{numero}</td>"
             in pagina
         )
-    assert pagina.count('bgcolor="#0347D0"') >= 5
+    assert pagina.count('bgcolor="#0347D0"') >= 6
     assert 'href="https://buska.test/buska.apk"' in pagina
     assert "Baixar o app para Android" in pagina
     assert "fontes desconhecidas" in pagina
     assert "Entre com o e-mail e a senha que você criou no cadastro." in pagina
-    assert pagina.index("Abra o app e entre") < pagina.index("No iPhone, o app chega em breve")
-    assert "Por enquanto use o BusKá pelo navegador" in pagina
+    assert "Android: pelo app" in pagina and "iPhone: pelo navegador" in pagina
+    assert 'href="https://buska.test"' in pagina
+    assert "Abrir o BusKá no Safari" in pagina
+    assert "Adicionar à Tela de Início" in pagina
+    assert "contato.buska@gmail.com" in pagina
     assert "—" not in pagina and "–" not in pagina
 
 
