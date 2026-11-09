@@ -5,7 +5,6 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.models.telemetria import EventoTelemetria
-from app.services import telemetria_service
 
 CONTEXTO = {
     "sessao_id": "sessao-abc-123",
@@ -88,14 +87,3 @@ def test_exige_login_e_sessao(client, aluno):
     r = client.post("/v1/telemetria", json={"contexto": CONTEXTO, "eventos": []})
     assert r.status_code == 401
     assert _enviar(aluno, [{"tipo": "tela", "nome": "inicio"}], contexto={}).status_code == 400
-
-
-def test_apaga_so_o_que_passou_de_90_dias(aluno, _db):
-    _enviar(aluno, [{"tipo": "tela", "nome": "velho"}, {"tipo": "tela", "nome": "novo"}])
-    velho = EventoTelemetria.query.filter_by(nome="velho").one()
-    velho.recebido_em = datetime.now(UTC) - timedelta(days=91)
-    _db.session.commit()
-
-    assert telemetria_service.apagar_eventos_antigos() == 1
-    _db.session.expire_all()
-    assert [e.nome for e in EventoTelemetria.query.all()] == ["novo"]

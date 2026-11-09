@@ -23,7 +23,6 @@ from .api.controllers.cep_controller import api as cep_ns
 from .api.controllers.convite_controller import api as convites_ns
 from .api.controllers.dashboard_controller import api as dashboard_ns
 from .api.controllers.feedback_controller import api as feedback_ns
-from .api.controllers.telemetria_controller import api as telemetria_ns
 from .api.controllers.instituicao_controller import api as inst_ns
 from .api.controllers.notificacao_controller import api as notificacoes_ns
 from .api.controllers.ocorrencia_controller import api as ocorrencias_ns
@@ -31,6 +30,7 @@ from .api.controllers.onibus_controller import api as onibus_ns
 from .api.controllers.pontos_controller import api as pontos_ns
 from .api.controllers.rotas_controller import api as rotas_ns
 from .api.controllers.routing_controller import api as routing_ns
+from .api.controllers.telemetria_controller import api as telemetria_ns
 from .api.controllers.user_controller import api as user_ns
 from .api.controllers.viagens_controller import api as viagem_ns
 from .core.config import Settings

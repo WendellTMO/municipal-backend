@@ -26,7 +26,6 @@ JOBS_ESPERADOS = {
     "job_viagens_semanais",
     "job_convites",
     "job_expirar_viagens",
-    "job_limpar_telemetria",
 }
 
 

@@ -59,7 +59,7 @@ docker logs buska_scheduler 2>&1 | grep "Scheduler up with"
 
 # Os jobs periódicos moram no scheduler. Deploy que sobe sem algum deles falha aqui, em vez de
 # deixar lembretes, convites ou o cancelamento de viagem vencida parados sem ninguém ver.
-JOBS="job_24h job_10min job_convites job_expirar_viagens job_limpar_telemetria job_viagens_semanais"
+JOBS="job_24h job_10min job_convites job_expirar_viagens job_viagens_semanais"
 for i in $(seq 1 15); do
   FALTAM=""
   for j in $JOBS; do

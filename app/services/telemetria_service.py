@@ -2,7 +2,7 @@
 
 O que entra é só nome do evento e números ou textos curtos (tela, tempo, resultado). Nunca texto
 digitado, nome, e-mail, CPF ou coordenada: o app não manda isso e o serviço descarta chaves e
-valores fora do formato. Evento com mais de 90 dias é apagado pelo job diário.
+valores fora do formato. Os eventos ficam enquanto durar a análise da demonstração.
 """
 
 import json
@@ -17,7 +17,6 @@ from app.models.telemetria import EventoTelemetria
 from app.models.user import User
 
 MAX_EVENTOS_POR_LOTE = 50
-RETENCAO = timedelta(days=90)
 TIPOS = {"tela", "acao", "erro", "api", "gps", "sessao"}
 MAX_CHAVES_DE_PROPS = 20
 MAX_TEXTO = 120
@@ -114,11 +113,3 @@ def registrar_lote(user_id: str, contexto: dict[str, Any], eventos: list[Any]) -
         with transactional():
             db.session.add_all(aceitos)
     return {"aceitos": len(aceitos), "descartados": descartados}
-
-
-def apagar_eventos_antigos(agora: datetime | None = None) -> int:
-    """Apaga os eventos recebidos há mais de 90 dias. Devolve quantos saíram."""
-    limite = (agora or datetime.now(UTC)) - RETENCAO
-    with transactional():
-        total = EventoTelemetria.query.filter(EventoTelemetria.recebido_em < limite).delete()
-    return int(total)

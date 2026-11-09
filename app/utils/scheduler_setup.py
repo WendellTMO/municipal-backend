@@ -10,7 +10,6 @@ from app.tasks.agendamento_tasks import job_gerar_viagens_semanais
 from app.tasks.convite_tasks import job_convites
 from app.tasks.expiracao_tasks import cancelar_viagens_nao_realizadas
 from app.tasks.notificacao_tasks import verificar_viagens_10min, verificar_viagens_24h
-from app.tasks.telemetria_tasks import job_limpar_telemetria
 
 
 def init_scheduler(app: Flask, scheduler: APScheduler):
@@ -74,14 +73,6 @@ def init_scheduler(app: Flask, scheduler: APScheduler):
             hours=12,
             # Roda também na subida: todo deploy reinicia o agendador e zeraria a contagem das 12 horas.
             next_run_time=datetime.now(),
-            replace_existing=True,
-        )
-
-        # Telemetria de uso: guarda 90 dias e apaga o resto todo dia de madrugada.
-        scheduler.add_job(
-            id="job_limpar_telemetria",
-            func=job_limpar_telemetria,
-            trigger=CronTrigger(hour=3, minute=30, timezone="America/Sao_Paulo"),
             replace_existing=True,
         )
 
