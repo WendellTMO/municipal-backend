@@ -17,7 +17,7 @@ def register_models(api):
     evento = api.model(
         "TelemetriaEvento",
         {
-            "tipo": fields.String(required=True, enum=["tela", "acao", "erro", "api", "gps", "sessao"]),
+            "tipo": fields.String(required=True, enum=["tela", "acao", "erro", "api", "gps", "sessao", "toque"]),
             "nome": fields.String(required=True, description="minúsculas, números e _ . : - /, até 80"),
             "props": fields.Raw(description="Chaves simples com número, texto curto ou booleano. Nunca dado pessoal."),
             "em": fields.Integer(description="Hora do evento no aparelho, em milissegundos desde 1970"),

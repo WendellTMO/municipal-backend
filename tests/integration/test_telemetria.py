@@ -87,3 +87,10 @@ def test_exige_login_e_sessao(client, aluno):
     r = client.post("/v1/telemetria", json={"contexto": CONTEXTO, "eventos": []})
     assert r.status_code == 401
     assert _enviar(aluno, [{"tipo": "tela", "nome": "inicio"}], contexto={}).status_code == 400
+
+
+def test_aceita_toque_com_celula_e_contagem(aluno, _db):
+    agora_ms = int(datetime.now(UTC).timestamp() * 1000)
+    r = _enviar(aluno, [{"tipo": "toque", "nome": "dashboard_aluno", "props": {"celula": "c2r7", "n": 5}, "em": agora_ms}])
+    assert r.get_json() == {"aceitos": 1, "descartados": 0}
+    assert EventoTelemetria.query.one().props == {"celula": "c2r7", "n": 5}

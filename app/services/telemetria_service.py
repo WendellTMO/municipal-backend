@@ -17,7 +17,7 @@ from app.models.telemetria import EventoTelemetria
 from app.models.user import User
 
 MAX_EVENTOS_POR_LOTE = 50
-TIPOS = {"tela", "acao", "erro", "api", "gps", "sessao"}
+TIPOS = {"tela", "acao", "erro", "api", "gps", "sessao", "toque"}
 MAX_CHAVES_DE_PROPS = 20
 MAX_TEXTO = 120
 MAX_BYTES_DE_PROPS = 2000

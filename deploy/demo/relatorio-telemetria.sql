@@ -68,6 +68,13 @@ FROM evento_telemetria
 WHERE ocorrido_em > now() - (:dias || ' days')::interval
 GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 12;
 
-\echo '== 9. Volume guardado'
+\echo '== 9. Onde mais se toca (por tela e célula da grade 6x10: cNrM = coluna N, linha M, 0 é canto superior esquerdo)'
+SELECT nome AS tela, props->>'celula' AS celula, sum((props->>'n')::int) AS toques,
+       count(DISTINCT usuario_id) AS usuarios
+FROM evento_telemetria
+WHERE tipo = 'toque' AND ocorrido_em > now() - (:dias || ' days')::interval
+GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 30;
+
+\echo '== 10. Volume guardado'
 SELECT count(*) AS eventos, min(recebido_em)::date AS mais_antigo, pg_size_pretty(pg_total_relation_size('evento_telemetria')) AS tamanho
 FROM evento_telemetria;
