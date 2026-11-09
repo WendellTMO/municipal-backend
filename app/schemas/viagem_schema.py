@@ -367,6 +367,14 @@ class ViagemResponseSchema(BaseSchema):
         return 0
 
 
+class ViagemAgendaQuerySchema(BaseSchema):
+    """GET /viagens/aluno/agenda?limit=..&offset=..&rota_id=.. (tudo opcional)."""
+
+    limit = fields.Integer(load_default=None, validate=Range(min=1, max=100))
+    offset = fields.Integer(load_default=0, validate=Range(min=0))
+    rota_id = fields.UUID(load_default=None)
+
+
 class ViagemAgendaAlunoResponseSchema(BaseSchema):
     """
     Agenda payload for a student's upcoming trips.
@@ -405,6 +413,9 @@ class ViagemAgendaAlunoResponseSchema(BaseSchema):
 
     def get_total_alunos(self, obj):
         """Total students subscribed to the route."""
+        pre_calculado = getattr(obj, "total_alunos_rota", None)
+        if pre_calculado is not None:
+            return pre_calculado
         if obj.horario_rota and obj.horario_rota.rota:
             return RotaAluno.query.filter_by(rota_id=obj.horario_rota.rota.id).count()
         return 0

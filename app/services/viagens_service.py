@@ -4,7 +4,8 @@ import logging
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy import func
+from sqlalchemy.orm import contains_eager, joinedload, selectinload
 
 from app.core.exceptions import (
     AppError,
@@ -114,8 +115,17 @@ def _popular_dados_da_viagem(viagem_obj: Viagem, rota_obj: Rota) -> None:
         ordem_real += 1
 
 
-def get_proximas_viagens_aluno(user_id: str) -> list[Viagem]:
-    """Returns upcoming trips (scheduled, running or cancelled) for the logged student."""
+def get_proximas_viagens_aluno(
+    user_id: str,
+    limit: int | None = None,
+    offset: int = 0,
+    rota_id: Any = None,
+) -> list[Viagem]:
+    """Returns upcoming trips (scheduled, running or cancelled) for the logged student.
+
+    `limit`/`offset` paginam a lista (sem `limit` devolve tudo, como o app antigo espera) e
+    `rota_id` restringe a uma rota.
+    """
     aluno = db.session.get(User, user_id)
     if not aluno or aluno.role != UserRole.ALUNO:
         raise ForbiddenError("Apenas alunos podem ver sua agenda de viagens")
@@ -148,10 +158,34 @@ def get_proximas_viagens_aluno(user_id: str) -> list[Viagem]:
             ),
             Viagem.data >= hoje,
         )
-        .order_by(Viagem.data.asc(), HorarioRota.horario_saida.asc())
+        # Horário e rota já vêm do join acima; confirmados em uma consulta só (sem uma por viagem).
+        .options(
+            contains_eager(Viagem.horario_rota).contains_eager(HorarioRota.rota),
+            selectinload(Viagem.alunos_confirmados),
+        )
+        .order_by(Viagem.data.asc(), HorarioRota.horario_saida.asc(), Viagem.id.asc())
     )
+    if rota_id is not None:
+        query = query.filter(Rota.id == rota_id)
+    if offset:
+        query = query.offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
 
     viagens = query.all()
+
+    # Total de alunos por rota em uma consulta, em vez de uma contagem por viagem.
+    rotas_da_pagina = {viagem.horario_rota.rota_id for viagem in viagens}
+    totais_por_rota: dict[Any, int] = {}
+    if rotas_da_pagina:
+        linhas = (
+            db.session.query(RotaAluno.rota_id, func.count())
+            .filter(RotaAluno.rota_id.in_(rotas_da_pagina))
+            .group_by(RotaAluno.rota_id)
+            .all()
+        )
+        for rota_da_linha, total in linhas:
+            totais_por_rota[rota_da_linha] = total
 
     # Sugestão de pontos por viagem: a instituição fica de um lado, o padrão lembrado do outro.
     ponto_instituicao = _ponto_da_instituicao(aluno)
@@ -160,6 +194,7 @@ def get_proximas_viagens_aluno(user_id: str) -> list[Viagem]:
         inscricoes[inscricao.rota_id] = inscricao
     for viagem in viagens:
         inscricao = inscricoes[viagem.horario_rota.rota_id]
+        viagem.total_alunos_rota = totais_por_rota.get(viagem.horario_rota.rota_id, 0)
         sentido = viagem.horario_rota.sentido
         padrao_embarque = inscricao.ponto_embarque_padrao_id
         padrao_desembarque = inscricao.ponto_desembarque_padrao_id
