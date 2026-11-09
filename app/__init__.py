@@ -23,6 +23,7 @@ from .api.controllers.cep_controller import api as cep_ns
 from .api.controllers.convite_controller import api as convites_ns
 from .api.controllers.dashboard_controller import api as dashboard_ns
 from .api.controllers.feedback_controller import api as feedback_ns
+from .api.controllers.telemetria_controller import api as telemetria_ns
 from .api.controllers.instituicao_controller import api as inst_ns
 from .api.controllers.notificacao_controller import api as notificacoes_ns
 from .api.controllers.ocorrencia_controller import api as ocorrencias_ns
@@ -113,6 +114,7 @@ NAMESPACES = (
     (ocorrencias_ns, "/v1/ocorrencias"),
     (dashboard_ns, "/v1/dashboard"),
     (feedback_ns, "/v1/feedback"),
+    (telemetria_ns, "/v1/telemetria"),
     (convites_ns, "/v1/convites"),
     (cep_ns, "/v1/cep"),
 )
