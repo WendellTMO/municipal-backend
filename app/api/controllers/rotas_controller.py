@@ -15,12 +15,14 @@ from app.schemas.ponto_schema import (
     PontoFlatListResponseSchema,
 )
 from app.schemas.rota_schema import (
+    AberturaMunicipalRequestSchema,
     InstituicaoOrdemListResponseSchema,
     MeuPontoEmbarqueRequestSchema,
     RotaCreateRequestSchema,
     RotaDetailResponseSchema,
     RotaInscricaoRequestSchema,
     RotaInstituicoesOrdemRequestSchema,
+    RotaListQuerySchema,
     RotaListResponseSchema,
     RotaPontosAddRequestSchema,
     RotaResponseSchema,
@@ -37,6 +39,8 @@ ponto_models = ponto_contract.register_models(api)
 # Validation schemas (Marshmallow)
 rota_response_schema = RotaResponseSchema()
 rota_list_response_schema = RotaListResponseSchema()
+rota_list_query_schema = RotaListQuerySchema()
+abertura_request_schema = AberturaMunicipalRequestSchema()
 rota_detail_response_schema = RotaDetailResponseSchema()
 
 rota_create_request_schema = RotaCreateRequestSchema()
@@ -62,7 +66,15 @@ class RotasListResource(Resource):
     @jwt_required()
     def get(self) -> tuple[dict[str, Any], int]:
         current_user_id = get_jwt_identity()
-        rotas = rotas_service.list_all_rotas(current_user_id)
+        filtros = rota_list_query_schema.load(request.args.to_dict())
+        rotas = rotas_service.list_all_rotas(
+            current_user_id,
+            filtros["limit"],
+            filtros["offset"],
+            filtros["q"],
+            filtros["uf"],
+            filtros["incluir_outras"],
+        )
         return (
             rota_list_response_schema.dump(list_envelope(rotas)),
             200,
@@ -79,6 +91,25 @@ class RotasListResource(Resource):
 
         rota = rotas_service.create_rota(current_user_id, payload)
         return rota_response_schema.dump(rota), 201
+
+
+@api.route("/abertura-municipal")
+class AberturaMunicipalResource(Resource):
+    @api.doc("get_abertura_municipal")
+    @jwt_required()
+    def get(self) -> tuple[dict[str, Any], int]:
+        """(Gestor) Se a prefeitura aceita alunos de outras prefeituras"""
+        return rotas_service.get_abertura_municipal(get_jwt_identity()), 200
+
+    @api.doc("set_abertura_municipal")
+    @jwt_required()
+    def patch(self) -> tuple[dict[str, Any], int]:
+        """(Gestor) Liga ou desliga a entrada de alunos de outras prefeituras"""
+        payload = abertura_request_schema.load(request.get_json(silent=True) or {})
+        resposta = rotas_service.set_abertura_municipal(
+            get_jwt_identity(), payload["aceita_alunos_de_fora"]
+        )
+        return resposta, 200
 
 
 @api.route("/me")

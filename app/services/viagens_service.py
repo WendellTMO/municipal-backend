@@ -230,6 +230,12 @@ def _ponto_da_instituicao_da_viagem(
     """
     instituicao_id = data.get("instituicao_id")
     if instituicao_id is None:
+        rota = db.session.get(Rota, horario.rota_id)
+        if rota is not None and rota.prefeitura_id != aluno.prefeitura_id:
+            # Aluno de outro município não tem instituição própria nesta rota: precisa escolher uma.
+            raise ValidationError(
+                "Escolha a instituição da rota.", details={"field": "instituicao_id"}
+            )
         return _ponto_da_instituicao(aluno)
 
     instituicao = db.session.get(Instituicao, instituicao_id)

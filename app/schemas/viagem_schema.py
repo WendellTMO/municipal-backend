@@ -3,14 +3,22 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
+from flask import g
 from flask_jwt_extended import get_jwt_identity
-from marshmallow import ValidationError as MarshmallowValidationError, fields, validates_schema
+from marshmallow import (
+    ValidationError as MarshmallowValidationError,
+    fields,
+    post_dump,
+    validates_schema,
+)
 from marshmallow.validate import Length, OneOf, Range
 
-from app.models.enum import SentidoViagem, StatusViagem
+from app.models.base import db
+from app.models.enum import SentidoViagem, StatusViagem, UserRole
 from app.models.geo import Instituicao
 from app.models.rota import RotaAluno
 from app.schemas.common import BaseSchema
+from app.models.user import User
 from app.schemas.validators import validate_uuid4
 
 # -------------------------
@@ -231,6 +239,26 @@ def _instituicao_da_viagem(obj):
     return escolhida or propria
 
 
+def _gestor_que_esta_lendo():
+    """O gestor que fez o pedido (para esconder alunos de outro município), ou None.
+
+    Guardado em `g`: a lista de alunos de uma viagem repete a pergunta para cada aluno.
+    """
+    try:
+        if hasattr(g, "_gestor_leitor"):
+            return g._gestor_leitor
+        usuario_id = get_jwt_identity()
+    except RuntimeError:
+        return None
+    gestor = None
+    if usuario_id:
+        usuario = db.session.get(User, usuario_id)
+        if usuario is not None and usuario.role == UserRole.GESTOR:
+            gestor = usuario
+    g._gestor_leitor = gestor
+    return gestor
+
+
 class ViagemAlunoConfirmacaoResponseSchema(BaseSchema):
     aluno_id = fields.String()
     nome = fields.String(attribute="aluno.nome")
@@ -260,6 +288,25 @@ class ViagemAlunoConfirmacaoResponseSchema(BaseSchema):
             "nome": instituicao.nome,
             "tipo": instituicao.tipo.value,
         }
+
+    @post_dump(pass_original=True)
+    def esconder_aluno_de_outro_municipio(self, dados, original, **kwargs):
+        """Para o gestor, o aluno de outra prefeitura aparece só como "outro município".
+
+        Sem nome, sem id e sem instituição. O motorista e o próprio aluno não passam por aqui.
+        """
+        gestor = _gestor_que_esta_lendo()
+        aluno = getattr(original, "aluno", None)
+        dados["outro_municipio"] = False
+        if gestor is None or aluno is None or aluno.prefeitura_id == gestor.prefeitura_id:
+            return dados
+        origem = aluno.prefeitura
+        dados["outro_municipio"] = True
+        dados["aluno_id"] = None
+        dados["nome"] = "Aluno de outro município"
+        dados["instituicao"] = None
+        dados["municipio_origem"] = f"{origem.nome}/{origem.estado}" if origem else None
+        return dados
 
 
 class ViagemPontoResponseSchema(BaseSchema):

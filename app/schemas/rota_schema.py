@@ -115,6 +115,23 @@ class RotaDetailResponseSchema(RotaResponseSchema):
         )
 
 
+class RotaListQuerySchema(BaseSchema):
+    """GET /rotas/?limit=..&offset=..&q=..&uf=..&incluir_outras=true (tudo opcional)."""
+
+    # Padrão 100 (o máximo): as telas do gestor ainda listam tudo de uma vez.
+    limit = fields.Integer(load_default=100, validate=validate.Range(min=1, max=100))
+    offset = fields.Integer(load_default=0, validate=validate.Range(min=0))
+    q = fields.String(load_default="", validate=validate.Length(max=100))
+    uf = fields.String(load_default=None, validate=validate.Length(equal=2))
+    incluir_outras = fields.Boolean(load_default=False)
+
+
+class AberturaMunicipalRequestSchema(BaseSchema):
+    """PATCH /rotas/abertura-municipal: o gestor liga ou desliga alunos de outras prefeituras."""
+
+    aceita_alunos_de_fora = fields.Boolean(required=True)
+
+
 class RotaListResponseSchema(BaseSchema):
     items = fields.List(fields.Nested(RotaResponseSchema), required=True)
     total = fields.Integer(required=True)

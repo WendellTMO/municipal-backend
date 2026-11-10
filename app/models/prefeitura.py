@@ -13,6 +13,8 @@ class Prefeitura(db.Model):
     estado = db.Column(db.String(2), nullable=False)
     codigo_ibge = db.Column(db.String(10), nullable=False, unique=True, index=True)
     ativo = db.Column(db.Boolean, server_default="true")
+    # Quando ligado, alunos de outras prefeituras podem buscar e se inscrever nas rotas desta.
+    aceita_alunos_de_fora = db.Column(db.Boolean, nullable=False, server_default="false")
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
 

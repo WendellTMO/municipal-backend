@@ -70,14 +70,15 @@ def test_contratos_que_validam_em_runtime_nao_foram_tocados(_db):
     """
     import pathlib
 
+    # Só o arquivo, sem o número da linha: editar o controller não deve quebrar esta guarda.
     ocorrencias = []
     for f in pathlib.Path("app/api/controllers").glob("*.py"):
-        for n, linha in enumerate(f.read_text().split("\n"), 1):
+        for linha in f.read_text().split("\n"):
             if "validate=True" in linha:
-                ocorrencias.append(f"{f.name}:{n}")
+                ocorrencias.append(f.name)
 
     assert sorted(ocorrencias) == [
-        "dashboard_controller.py:41",
-        "notificacao_controller.py:33",
-        "ocorrencia_controller.py:55",
+        "dashboard_controller.py",
+        "notificacao_controller.py",
+        "ocorrencia_controller.py",
     ]

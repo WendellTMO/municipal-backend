@@ -3,6 +3,7 @@
 import logging
 from typing import Any
 
+from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 
 from app.core.exceptions import (
@@ -14,6 +15,7 @@ from app.core.transaction import transactional
 from app.models.base import db
 from app.models.enum import DiaDaSemana, SentidoViagem, UserRole
 from app.models.geo import Instituicao, Ponto
+from app.models.prefeitura import Prefeitura
 from app.models.rota import (
     DiasOperacao,
     HorarioRota,
@@ -29,15 +31,20 @@ from app.utils import audit_logger, validate_uuid
 logger = logging.getLogger(__name__)
 
 
-def list_all_rotas(user_id: str) -> list[Rota]:
+def list_all_rotas(
+    user_id: str,
+    limit: int = 100,
+    offset: int = 0,
+    q: str = "",
+    uf: str | None = None,
+    incluir_outras: bool = False,
+) -> list[Rota]:
     """
-    List all routes for user's prefeitura.
+    Rotas visíveis ao usuário, em páginas e em ordem alfabética.
 
-    Args:
-        user_id: ID of the user requesting the list
-
-    Returns:
-        List of Rota objects
+    Gestor e motorista veem só as da própria prefeitura. O aluno vê as da própria prefeitura e,
+    com `incluir_outras`, as de prefeituras ativas que aceitam alunos de fora. `q` busca no nome
+    da rota e no nome do município; `uf` filtra pelo estado do município.
 
     Raises:
         NotFoundError: If user not found
@@ -47,8 +54,94 @@ def list_all_rotas(user_id: str) -> list[Rota]:
     if not user:
         raise NotFoundError("Usuário não encontrado")
 
-    logger.debug(f"User {user_id} listing routes for prefeitura {user.prefeitura_id}")
-    return Rota.query.filter_by(prefeitura_id=user.prefeitura_id).all()
+    query = Rota.query.join(Prefeitura, Rota.prefeitura_id == Prefeitura.id)
+    if incluir_outras and user.role == UserRole.ALUNO:
+        query = query.filter(
+            or_(
+                Rota.prefeitura_id == user.prefeitura_id,
+                (Prefeitura.aceita_alunos_de_fora.is_(True)) & (Prefeitura.ativo.is_(True)),
+            )
+        )
+    else:
+        query = query.filter(Rota.prefeitura_id == user.prefeitura_id)
+
+    texto = q.strip()
+    if texto:
+        padrao = f"%{texto}%"
+        query = query.filter(or_(Rota.nome.ilike(padrao), Prefeitura.nome.ilike(padrao)))
+    if uf:
+        query = query.filter(Prefeitura.estado == uf.upper())
+
+    logger.debug(f"User {user_id} listing routes (incluir_outras={incluir_outras})")
+    return (
+        query.options(joinedload(Rota.prefeitura))
+        .order_by(Rota.nome.asc(), Rota.id.asc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+
+def _rota_aberta_a_alunos_de_fora(rota: Rota) -> bool:
+    """A prefeitura dona da rota está ativa e aceita alunos de outras prefeituras."""
+    prefeitura = db.session.get(Prefeitura, rota.prefeitura_id)
+    return bool(prefeitura and prefeitura.ativo and prefeitura.aceita_alunos_de_fora)
+
+
+def _get_rota_para_leitura(user_id: str, rota_id: str) -> Rota:
+    """Rota para leitura (detalhe, pontos, horários).
+
+    Gestor e motorista: só da própria prefeitura. Aluno: da própria prefeitura, de uma rota em
+    que já está inscrito ou de uma prefeitura que aceita alunos de fora. Nunca vale para escrita.
+
+    Raises: NotFoundError, ForbiddenError
+    """
+    user = User.query.get(user_id)
+    if not user:
+        raise NotFoundError("Usuário não encontrado")
+
+    rota = Rota.query.get(rota_id)
+    if not rota:
+        raise NotFoundError("Rota não encontrada")
+
+    if rota.prefeitura_id == user.prefeitura_id:
+        return rota
+    if user.role == UserRole.ALUNO:
+        inscrito = RotaAluno.query.filter_by(rota_id=rota.id, aluno_id=user.id).first()
+        if inscrito is not None or _rota_aberta_a_alunos_de_fora(rota):
+            return rota
+    raise ForbiddenError("Acesso negado")
+
+
+def get_abertura_municipal(user_id: str) -> dict[str, Any]:
+    """(Gestor) Se a prefeitura aceita alunos de outras prefeituras."""
+    user = User.query.get(user_id)
+    if not user or user.role != UserRole.GESTOR:
+        raise ForbiddenError("Permissão negada")
+    prefeitura = db.session.get(Prefeitura, user.prefeitura_id)
+    return {"aceita_alunos_de_fora": bool(prefeitura and prefeitura.aceita_alunos_de_fora)}
+
+
+def set_abertura_municipal(user_id: str, aceita: bool) -> dict[str, Any]:
+    """(Gestor) Liga ou desliga a entrada de alunos de outras prefeituras.
+
+    Desligar só impede novas inscrições: quem já está inscrito continua na rota.
+    """
+    user = User.query.get(user_id)
+    if not user or user.role != UserRole.GESTOR:
+        raise ForbiddenError("Permissão negada")
+    prefeitura = db.session.get(Prefeitura, user.prefeitura_id)
+    if prefeitura is None:
+        raise NotFoundError("Prefeitura não encontrada")
+    with transactional():
+        prefeitura.aceita_alunos_de_fora = aceita
+    audit_logger.log_user_action(
+        action="abertura_municipal",
+        user_id=user_id,
+        resource_type="prefeitura",
+        resource_id=str(prefeitura.id),
+    )
+    return {"aceita_alunos_de_fora": aceita}
 
 
 def _get_rota_do_tenant(user_id: str, rota_id: str) -> Rota:
@@ -125,8 +218,15 @@ def gerenciar_inscricao_aluno(user_id: str, rota_id: str, data: dict[str, Any]) 
     if not rota:
         raise NotFoundError("Rota não encontrada")
 
-    # Validate tenant isolation - student can only subscribe to routes in their prefeitura
-    if rota.prefeitura_id != aluno.prefeitura_id:
+    acao = data.get("acao")
+    # A própria prefeitura sempre vale. Outra só se aceita alunos de fora, e só para entrar:
+    # sair da rota continua possível mesmo depois de a prefeitura fechar a entrada.
+    de_fora_permitido = acao == "inscrever" and _rota_aberta_a_alunos_de_fora(rota)
+    de_fora_saindo = (
+        acao == "desinscrever"
+        and RotaAluno.query.filter_by(rota_id=rota.id, aluno_id=aluno.id).first() is not None
+    )
+    if rota.prefeitura_id != aluno.prefeitura_id and not (de_fora_permitido or de_fora_saindo):
         audit_logger.log_security_event(
             event_type="cross_tenant_subscription_attempt",
             severity="high",
@@ -135,7 +235,6 @@ def gerenciar_inscricao_aluno(user_id: str, rota_id: str, data: dict[str, Any]) 
         )
         raise ForbiddenError("Acesso negado a esta rota")
 
-    acao = data.get("acao")
     if not acao or acao not in ["inscrever", "desinscrever"]:
         raise ValidationError("Ação inválida. Use 'inscrever' ou 'desinscrever'.")
 
@@ -428,7 +527,7 @@ def get_horarios(user_id: str, rota_id: str) -> list:
 
     Raises: NotFoundError, ForbiddenError
     """
-    rota = _get_rota_do_tenant(user_id, rota_id)
+    rota = _get_rota_para_leitura(user_id, rota_id)
 
     return rota.grade_horarios
 
@@ -439,7 +538,7 @@ def get_by_id(user_id: str, rota_id: str) -> Rota:
 
     Raises: NotFoundError, ForbiddenError
     """
-    rota = _get_rota_do_tenant(user_id, rota_id)
+    rota = _get_rota_para_leitura(user_id, rota_id)
 
     return rota
 
@@ -577,7 +676,7 @@ def delete_rota(user_id: str, rota_id: str) -> None:
 
 
 def get_pontos_by_rota(user_id: str, rota_id: str) -> list[dict[str, Any]]:
-    _get_rota_do_tenant(user_id, rota_id)
+    _get_rota_para_leitura(user_id, rota_id)
 
     # joinedload traz ponto e instituição na mesma query (evita N+1)
     rota_pontos = (
