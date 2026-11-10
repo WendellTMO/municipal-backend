@@ -167,6 +167,7 @@ class MinhasViagensResource(Resource):
             filtros["offset"],
             filtros["periodo"],
             filtros["viagem_id"],
+            filtros["rota_id"],
         )
         return (
             viagem_list_response_schema.dump(list_envelope(viagens)),

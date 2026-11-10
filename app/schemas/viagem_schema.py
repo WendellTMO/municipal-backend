@@ -368,12 +368,13 @@ class ViagemResponseSchema(BaseSchema):
 
 
 class ViagemMinhasQuerySchema(BaseSchema):
-    """GET /viagens/minhas (motorista): periodo, limit, offset e viagem_id, todos opcionais."""
+    """GET /viagens/minhas (motorista): periodo, limit, offset, viagem_id e rota_id, opcionais."""
 
     periodo = fields.String(load_default=None, validate=OneOf(["proximas", "historico"]))
     limit = fields.Integer(load_default=100, validate=Range(min=1, max=100))
     offset = fields.Integer(load_default=0, validate=Range(min=0))
     viagem_id = fields.UUID(load_default=None)
+    rota_id = fields.UUID(load_default=None)
 
 
 class ViagemAgendaQuerySchema(BaseSchema):

@@ -592,6 +592,7 @@ def list_viagens_motorista(
     offset: int = 0,
     periodo: str | None = None,
     viagem_id: Any = None,
+    rota_id: Any = None,
 ) -> list[Viagem]:
     """Viagens do motorista, em páginas.
 
@@ -619,6 +620,8 @@ def list_viagens_motorista(
     )
     if viagem_id is not None:
         query = query.filter(Viagem.id == viagem_id)
+    if rota_id is not None:
+        query = query.filter(HorarioRota.rota_id == rota_id)
 
     if periodo == "proximas":
         query = query.filter(or_(Viagem.status == StatusViagem.EM_ANDAMENTO, ainda_aberta)).order_by(

@@ -84,6 +84,14 @@ def test_viagem_id_devolve_so_a_viagem(motorista, viagens):
     assert _ids(resp) == [str(alvo.id)]
 
 
+def test_rota_id_filtra_pela_rota(motorista, viagens, rota):
+    com_rota = motorista.client.get(f"{URL}?rota_id={rota.id}")
+    outra = motorista.client.get(f"{URL}?rota_id=00000000-0000-0000-0000-000000000001")
+
+    assert len(_ids(com_rota)) == 6
+    assert _ids(outra) == []
+
+
 def test_nao_enxerga_viagem_de_outro_motorista(other_motorista, viagens):
     assert _ids(other_motorista.client.get(URL)) == []
     resp = other_motorista.client.get(f"{URL}?viagem_id={viagens['hoje'].id}")
@@ -91,7 +99,7 @@ def test_nao_enxerga_viagem_de_outro_motorista(other_motorista, viagens):
 
 
 @pytest.mark.parametrize(
-    "consulta", ["limit=0", "limit=101", "offset=-1", "periodo=tudo", "viagem_id=abc"]
+    "consulta", ["limit=0", "limit=101", "offset=-1", "periodo=tudo", "viagem_id=abc", "rota_id=abc"]
 )
 def test_parametros_invalidos_sao_recusados(motorista, consulta):
     assert motorista.client.get(f"{URL}?{consulta}").status_code == 400
