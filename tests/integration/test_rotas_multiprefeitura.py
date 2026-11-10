@@ -133,6 +133,18 @@ def test_paginacao_das_rotas(_db, aluno, rota, other_prefeitura, cenario_p2):
     assert primeira + segunda == todas
 
 
+def test_rota_da_propria_prefeitura_vem_antes_mesmo_com_nome_depois(
+    _db, aluno, rota, other_prefeitura, cenario_p2
+):
+    _abrir(_db, other_prefeitura)
+    rota.nome = "ZZZ rota da casa"  # alfabeticamente depois da rota de fora
+    _db.session.commit()
+
+    ids = _ids(aluno.client.get("/v1/rotas/?incluir_outras=true"))
+
+    assert ids == [str(rota.id), str(cenario_p2["rota"].id)]
+
+
 def test_aluno_de_fora_inscreve_le_e_confirma_presenca(_db, aluno, other_prefeitura, cenario_p2):
     _abrir(_db, other_prefeitura)
     rota = cenario_p2["rota"]

@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from sqlalchemy import or_
+from sqlalchemy import case, or_
 from sqlalchemy.orm import joinedload
 
 from app.core.exceptions import (
@@ -73,9 +73,11 @@ def list_all_rotas(
         query = query.filter(Prefeitura.estado == uf.upper())
 
     logger.debug(f"User {user_id} listing routes (incluir_outras={incluir_outras})")
+    # As rotas da própria prefeitura vêm primeiro; dentro de cada grupo, ordem alfabética.
+    da_propria_prefeitura_primeiro = case((Rota.prefeitura_id == user.prefeitura_id, 0), else_=1)
     return (
         query.options(joinedload(Rota.prefeitura))
-        .order_by(Rota.nome.asc(), Rota.id.asc())
+        .order_by(da_propria_prefeitura_primeiro, Rota.nome.asc(), Rota.id.asc())
         .offset(offset)
         .limit(limit)
         .all()
