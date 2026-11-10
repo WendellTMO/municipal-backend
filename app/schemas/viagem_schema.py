@@ -367,10 +367,20 @@ class ViagemResponseSchema(BaseSchema):
         return 0
 
 
+class ViagemMinhasQuerySchema(BaseSchema):
+    """GET /viagens/minhas (motorista): periodo, limit, offset e viagem_id, todos opcionais."""
+
+    periodo = fields.String(load_default=None, validate=OneOf(["proximas", "historico"]))
+    limit = fields.Integer(load_default=100, validate=Range(min=1, max=100))
+    offset = fields.Integer(load_default=0, validate=Range(min=0))
+    viagem_id = fields.UUID(load_default=None)
+
+
 class ViagemAgendaQuerySchema(BaseSchema):
     """GET /viagens/aluno/agenda?limit=..&offset=..&rota_id=.. (tudo opcional)."""
 
-    limit = fields.Integer(load_default=None, validate=Range(min=1, max=100))
+    # Padrão 50: o app antigo não manda limit e não deve baixar a agenda inteira.
+    limit = fields.Integer(load_default=50, validate=Range(min=1, max=100))
     offset = fields.Integer(load_default=0, validate=Range(min=0))
     rota_id = fields.UUID(load_default=None)
 

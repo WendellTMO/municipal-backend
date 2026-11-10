@@ -16,6 +16,7 @@ from app.schemas.viagem_schema import (
     ViagemAcaoRequestSchema,
     ViagemAgendaAlunoListResponseSchema,
     ViagemAgendaQuerySchema,
+    ViagemMinhasQuerySchema,
     ViagemAlunoConfirmacaoResponseSchema,
     ViagemCancelarRequestSchema,
     ViagemChegadasRequestSchema,
@@ -56,6 +57,7 @@ viagem_lote_response_schema = ViagemLoteResponseSchema()
 viagem_aluno_confirmacao_response_schema = ViagemAlunoConfirmacaoResponseSchema()
 viagem_agenda_aluno_list_response_schema = ViagemAgendaAlunoListResponseSchema()
 viagem_agenda_query_schema = ViagemAgendaQuerySchema()
+viagem_minhas_query_schema = ViagemMinhasQuerySchema()
 
 
 ponto_flat_list_response_schema = PontoFlatListResponseSchema()
@@ -158,7 +160,14 @@ class MinhasViagensResource(Resource):
     @jwt_required()
     def get(self) -> tuple[dict[str, Any], int]:
         user_id = get_jwt_identity()
-        viagens = viagens_service.list_viagens_motorista(user_id)
+        filtros = viagem_minhas_query_schema.load(request.args.to_dict())
+        viagens = viagens_service.list_viagens_motorista(
+            user_id,
+            filtros["limit"],
+            filtros["offset"],
+            filtros["periodo"],
+            filtros["viagem_id"],
+        )
         return (
             viagem_list_response_schema.dump(list_envelope(viagens)),
             200,

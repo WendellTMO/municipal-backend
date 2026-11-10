@@ -4,7 +4,7 @@ import logging
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import contains_eager, joinedload, selectinload
 
 from app.core.exceptions import (
@@ -586,15 +586,52 @@ def gerar_viagens_em_lote(user_id: str, data_viagem: date) -> dict[str, Any]:
         return relatorio
 
 
-def list_viagens_motorista(user_id: str) -> list[Viagem]:
-    """List trips assigned to the driver."""
-    return (
-        db.session.query(Viagem)
-        .options(*_carga_da_listagem())
-        .filter_by(motorista_id=user_id)
-        .order_by(Viagem.data.desc())
-        .all()
+def list_viagens_motorista(
+    user_id: str,
+    limit: int = 100,
+    offset: int = 0,
+    periodo: str | None = None,
+    viagem_id: Any = None,
+) -> list[Viagem]:
+    """Viagens do motorista, em páginas.
+
+    `periodo="proximas"`: em andamento, mais agendadas e canceladas de ontem em diante (ontem
+    ainda pode estar aberta), da mais perto para a mais longe. `periodo="historico"`: feitas,
+    canceladas e agendadas de dias que já passaram, da mais recente para a mais antiga. Sem
+    `periodo` vem tudo, da mais recente para a mais antiga. `viagem_id` restringe a uma viagem
+    (sempre só entre as do próprio motorista).
+    """
+    hoje = date.today()
+    ainda_aberta = and_(
+        Viagem.status.in_([StatusViagem.AGENDADA, StatusViagem.CANCELADA]),
+        Viagem.data >= hoje - timedelta(days=1),
     )
+    ja_passou = or_(
+        Viagem.status.in_([StatusViagem.FINALIZADA, StatusViagem.CANCELADA]),
+        and_(Viagem.status == StatusViagem.AGENDADA, Viagem.data < hoje),
+    )
+
+    query = (
+        db.session.query(Viagem)
+        .join(HorarioRota, Viagem.horario_rota_id == HorarioRota.id)
+        .options(*_carga_da_listagem())
+        .filter(Viagem.motorista_id == user_id)
+    )
+    if viagem_id is not None:
+        query = query.filter(Viagem.id == viagem_id)
+
+    if periodo == "proximas":
+        query = query.filter(or_(Viagem.status == StatusViagem.EM_ANDAMENTO, ainda_aberta)).order_by(
+            Viagem.data.asc(), HorarioRota.horario_saida.asc(), Viagem.id.asc()
+        )
+    else:
+        if periodo == "historico":
+            query = query.filter(ja_passou)
+        query = query.order_by(
+            Viagem.data.desc(), HorarioRota.horario_saida.desc(), Viagem.id.desc()
+        )
+
+    return query.offset(offset).limit(limit).all()
 
 
 def _exigir_viagem_da_prefeitura(user: User, viagem: Viagem) -> None:
