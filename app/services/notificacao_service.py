@@ -149,13 +149,20 @@ class NotificacaoService:
         }
 
     @staticmethod
-    def listar_notificacoes(user_id: str) -> list[Notificacao]:
-        """Lista avisos do usuário logado"""
+    def listar_notificacoes(user_id: str, limit: int = 30, offset: int = 0) -> list[Notificacao]:
+        """Lista avisos do usuário logado, os mais novos primeiro, em páginas."""
         return (
             Notificacao.query.filter_by(usuario_id=user_id)
-            .order_by(Notificacao.created_at.desc())
+            .order_by(Notificacao.created_at.desc(), Notificacao.id.desc())
+            .offset(offset)
+            .limit(limit)
             .all()
         )
+
+    @staticmethod
+    def contar_nao_lidas(user_id: str) -> int:
+        """Quantos avisos o usuário ainda não leu (para o selo, sem baixar a lista)."""
+        return Notificacao.query.filter_by(usuario_id=user_id, enviada=False).count()
 
     @staticmethod
     def marcar_lida(user_id: str, notificacao_id: str) -> dict[str, str]:
