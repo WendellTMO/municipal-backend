@@ -57,6 +57,25 @@ def test_conta_so_as_nao_lidas(aluno, quarenta):
     assert resp.get_json() == {"count": 30}
 
 
-@pytest.mark.parametrize("consulta", ["limit=0", "limit=101", "offset=-1"])
+def test_filtra_por_estado(aluno, quarenta):
+    nao_lidas = aluno.client.get(f"{URL}?estado=nao_lidas&limit=100").get_json()
+    lidas = aluno.client.get(f"{URL}?estado=lidas&limit=100").get_json()
+
+    assert len(nao_lidas) == 30 and all(not n["enviada"] for n in nao_lidas)
+    assert len(lidas) == 10 and all(n["enviada"] for n in lidas)
+
+
+def test_filtro_nao_mostra_notificacao_de_outro_usuario(_db, aluno, other_aluno, quarenta):
+    _db.session.add(
+        Notificacao(usuario_id=other_aluno.user.id, titulo="Do outro", mensagem="x", enviada=False)
+    )
+    _db.session.commit()
+
+    titulos = _titulos(aluno.client.get(f"{URL}?estado=nao_lidas&limit=100"))
+
+    assert "Do outro" not in titulos
+
+
+@pytest.mark.parametrize("consulta", ["limit=0", "limit=101", "offset=-1", "estado=tudo"])
 def test_parametros_invalidos_sao_recusados(aluno, consulta):
     assert aluno.client.get(f"{URL}?{consulta}").status_code == 400

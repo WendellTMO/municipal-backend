@@ -12,10 +12,13 @@ notificacao_input_model = get_notificacao_input_model(api)
 
 
 class NotificacaoListaQuerySchema(Schema):
-    """GET /notificacoes?limit=..&offset=.. (os mais novos primeiro)."""
+    """GET /notificacoes?limit=..&offset=..&estado=todas|nao_lidas|lidas (mais novos primeiro)."""
 
     limit = fields.Integer(load_default=30, validate=validate.Range(min=1, max=100))
     offset = fields.Integer(load_default=0, validate=validate.Range(min=0))
+    estado = fields.String(
+        load_default="todas", validate=validate.OneOf(["todas", "nao_lidas", "lidas"])
+    )
 
 
 notificacao_lista_query_schema = NotificacaoListaQuerySchema()
@@ -30,7 +33,7 @@ class NotificacaoListResource(Resource):
         user_id = get_jwt_identity()
         filtros = notificacao_lista_query_schema.load(request.args.to_dict())
         notificacoes = NotificacaoService.listar_notificacoes(
-            user_id, filtros["limit"], filtros["offset"]
+            user_id, filtros["limit"], filtros["offset"], filtros["estado"]
         )
         return [
             {

@@ -149,11 +149,20 @@ class NotificacaoService:
         }
 
     @staticmethod
-    def listar_notificacoes(user_id: str, limit: int = 30, offset: int = 0) -> list[Notificacao]:
-        """Lista avisos do usuário logado, os mais novos primeiro, em páginas."""
+    def listar_notificacoes(
+        user_id: str, limit: int = 30, offset: int = 0, estado: str = "todas"
+    ) -> list[Notificacao]:
+        """Lista avisos do usuário logado, os mais novos primeiro, em páginas.
+
+        `estado`: "todas", "nao_lidas" ou "lidas".
+        """
+        query = Notificacao.query.filter_by(usuario_id=user_id)
+        if estado == "nao_lidas":
+            query = query.filter(Notificacao.enviada.is_(False))
+        elif estado == "lidas":
+            query = query.filter(Notificacao.enviada.is_(True))
         return (
-            Notificacao.query.filter_by(usuario_id=user_id)
-            .order_by(Notificacao.created_at.desc(), Notificacao.id.desc())
+            query.order_by(Notificacao.created_at.desc(), Notificacao.id.desc())
             .offset(offset)
             .limit(limit)
             .all()
