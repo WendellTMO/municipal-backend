@@ -122,6 +122,22 @@ def test_create_motorista_reports_invalid_cpf_in_the_message(gestor):
 
 
 @pytest.mark.integration
+def test_cadastro_de_motorista_sem_telefone(gestor):
+    """Telefone é opcional: sem ele o schema entrega None e o cadastro não pode quebrar."""
+    payload = {
+        "nome": "Motorista Sem Telefone",
+        "email": "motorista-sem-telefone@buska.test",
+        "password": "StrongPass123!",
+        "cpf": "52998224725",
+        "cnh": "98765432100",
+    }
+
+    r = gestor.client.post("/v1/users/motoristas", json=payload)
+
+    assert r.status_code == 201, r.get_data(as_text=True)
+
+
+@pytest.mark.integration
 def test_signup_nao_exige_matricula(client):
     """Matrícula é opcional: sem ela, o cadastro passa da validação do corpo."""
     payload = _signup_payload()

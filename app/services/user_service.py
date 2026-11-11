@@ -139,7 +139,7 @@ def create_motorista(gestor_id: str, data: dict[str, Any]) -> Motorista:
             email=email,
             senha_hash=generate_password_hash(password),
             cpf=cpf_clean,
-            telefone=data.get("telefone", "").strip(),
+            telefone=(data.get("telefone") or "").strip() or None,
             role=UserRole.MOTORISTA,
             cnh=cnh,
         )
