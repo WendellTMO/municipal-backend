@@ -7,6 +7,7 @@ from flask import Flask
 from flask_apscheduler import APScheduler
 
 from app.tasks.agendamento_tasks import job_gerar_viagens_semanais
+from app.tasks.andamento_tasks import vigiar_viagens_em_andamento
 from app.tasks.convite_tasks import job_convites
 from app.tasks.expiracao_tasks import cancelar_viagens_nao_realizadas
 from app.tasks.notificacao_tasks import verificar_viagens_10min, verificar_viagens_24h
@@ -73,6 +74,16 @@ def init_scheduler(app: Flask, scheduler: APScheduler):
             hours=12,
             # Roda também na subida: todo deploy reinicia o agendador e zeraria a contagem das 12 horas.
             next_run_time=datetime.now(),
+            replace_existing=True,
+        )
+
+        # Avisa o motorista parado há 15 minutos e encerra a viagem que passou de 5 horas.
+        scheduler.add_job(
+            id="job_viagens_em_andamento",
+            func=vigiar_viagens_em_andamento,
+            trigger="interval",
+            minutes=5,
+            max_instances=1,
             replace_existing=True,
         )
 

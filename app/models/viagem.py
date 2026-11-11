@@ -43,6 +43,8 @@ class Viagem(db.Model):
     # it must change to a version 2
     aviso_24h_enviado = db.Column(db.Boolean, default=False, nullable=False)
     aviso_10min_enviado = db.Column(db.Boolean, default=False, nullable=False)
+    # Avisou o motorista que o ônibus está parado. Volta a false quando ele se mexe de novo.
+    aviso_parada_enviado = db.Column(db.Boolean, server_default="false", nullable=False)
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
     updated_at = db.Column(
