@@ -1,6 +1,7 @@
 """Routes (Rota) service - route management, subscriptions, schedules."""
 
 import logging
+from datetime import date
 from typing import Any
 
 from sqlalchemy import case, or_
@@ -14,7 +15,7 @@ from app.core.exceptions import (
 )
 from app.core.transaction import transactional
 from app.models.base import db
-from app.models.enum import DiaDaSemana, SentidoViagem, UserRole
+from app.models.enum import DiaDaSemana, SentidoViagem, StatusViagem, UserRole
 from app.models.geo import Instituicao, Ponto
 from app.models.prefeitura import Prefeitura
 from app.models.rota import (
@@ -26,7 +27,8 @@ from app.models.rota import (
     RotaPonto,
 )
 from app.models.user import User
-from app.services.viagens_service import gerar_viagens_periodo
+from app.models.viagem import Viagem
+from app.services.viagens_service import gerar_viagens_da_rota
 from app.utils import audit_logger, validate_uuid
 
 logger = logging.getLogger(__name__)
@@ -421,7 +423,7 @@ def create_rota(gestor_id: str, data: dict[str, Any]) -> Rota:
                         novo_dia = DiasOperacao(horario_rota_id=novo_horario.id, dia=dia_str)
                         db.session.add(novo_dia)
 
-    gerar_viagens_periodo(gestor_id=gestor_id, dias_futuros=14)
+    gerar_viagens_da_rota(rota.id)
 
     return rota
 
@@ -524,6 +526,8 @@ def add_horario(gestor_id: str, rota_id: str, data: dict[str, Any]) -> HorarioRo
             novo_dia = DiasOperacao(horario_rota_id=novo_horario.id, dia=DiaDaSemana(dia_str))
             db.session.add(novo_dia)
 
+    gerar_viagens_da_rota(rota.id)
+
     return novo_horario
 
 
@@ -614,6 +618,24 @@ def update_rota(user_id: str, rota_id: str, data: dict[str, Any]) -> Rota:
         if "veiculo_padrao_id" in data:
             rota.veiculo_padrao_id = data.get("veiculo_padrao_id")
             updated_fields.append("veiculo_padrao_id")
+
+        # As viagens futuras já foram geradas com o motorista e o ônibus antigos.
+        if "motorista_padrao_id" in data or "veiculo_padrao_id" in data:
+            viagens_futuras = (
+                db.session.query(Viagem)
+                .join(HorarioRota, Viagem.horario_rota_id == HorarioRota.id)
+                .filter(
+                    HorarioRota.rota_id == rota.id,
+                    Viagem.status == StatusViagem.AGENDADA,
+                    Viagem.data >= date.today(),
+                )
+                .all()
+            )
+            for viagem in viagens_futuras:
+                if "motorista_padrao_id" in data:
+                    viagem.motorista_id = rota.motorista_padrao_id
+                if "veiculo_padrao_id" in data:
+                    viagem.veiculo_id = rota.veiculo_padrao_id
 
     audit_logger.log_user_action(
         action="update",

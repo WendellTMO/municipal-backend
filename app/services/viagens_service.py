@@ -606,7 +606,6 @@ def gerar_viagens_em_lote(user_id: str, data_viagem: date) -> dict[str, Any]:
     if not user or user.role != UserRole.GESTOR:
         raise ForbiddenError("Permissão negada. Apenas gestores podem gerar lote.")
 
-    dia_semana = _get_dia_semana_enum(data_viagem)
     rotas = db.session.query(Rota).filter(Rota.prefeitura_id == user.prefeitura_id).all()
 
     relatorio: dict[str, Any] = {
@@ -617,46 +616,71 @@ def gerar_viagens_em_lote(user_id: str, data_viagem: date) -> dict[str, Any]:
 
     with transactional():
         for rota in rotas:
-            horarios_validos = (
-                db.session.query(HorarioRota)
-                .join(DiasOperacao)
-                .filter(HorarioRota.rota_id == rota.id, DiasOperacao.dia == dia_semana)
-                .all()
-            )
-
-            for horario in horarios_validos:
-                existe = (
-                    db.session.query(Viagem.id)
-                    .filter_by(data=data_viagem, horario_rota_id=horario.id)
-                    .first()
-                )
-                if existe:
-                    continue
-
-                try:
-                    # Savepoint: se outro processo criou a mesma viagem agora (job e gestor ao
-                    # mesmo tempo), a restrição única recusa e só esta é pulada, não o dia todo.
-                    with db.session.begin_nested():
-                        nova_viagem = Viagem(
-                            data=data_viagem,
-                            horario_rota_id=horario.id,
-                            motorista_id=rota.motorista_padrao_id,
-                            veiculo_id=rota.veiculo_padrao_id,
-                            status=StatusViagem.AGENDADA,
-                        )
-                        db.session.add(nova_viagem)
-                        db.session.flush()
-
-                        _popular_dados_da_viagem(nova_viagem, rota)
-                except IntegrityError:
-                    continue
-
-                relatorio["viagens_criadas"] += 1
-                relatorio["detalhes"].append(
-                    f"Viagem criada: {rota.nome} - {horario.horario_saida}"
-                )
+            criadas = _criar_viagens_da_rota_no_dia(rota, data_viagem)
+            relatorio["viagens_criadas"] += len(criadas)
+            relatorio["detalhes"].extend(criadas)
 
         return relatorio
+
+
+def _criar_viagens_da_rota_no_dia(rota: Rota, data_viagem: date) -> list[str]:
+    """Cria as viagens que faltam da rota naquele dia. Devolve uma linha por viagem criada."""
+    dia_semana = _get_dia_semana_enum(data_viagem)
+    horarios_validos = (
+        db.session.query(HorarioRota)
+        .join(DiasOperacao)
+        .filter(HorarioRota.rota_id == rota.id, DiasOperacao.dia == dia_semana)
+        .all()
+    )
+
+    criadas: list[str] = []
+    for horario in horarios_validos:
+        existe = (
+            db.session.query(Viagem.id)
+            .filter_by(data=data_viagem, horario_rota_id=horario.id)
+            .first()
+        )
+        if existe:
+            continue
+
+        try:
+            # Savepoint: se outro processo criou a mesma viagem agora (job e gestor ao
+            # mesmo tempo), a restrição única recusa e só esta é pulada, não o dia todo.
+            with db.session.begin_nested():
+                nova_viagem = Viagem(
+                    data=data_viagem,
+                    horario_rota_id=horario.id,
+                    motorista_id=rota.motorista_padrao_id,
+                    veiculo_id=rota.veiculo_padrao_id,
+                    status=StatusViagem.AGENDADA,
+                )
+                db.session.add(nova_viagem)
+                db.session.flush()
+
+                _popular_dados_da_viagem(nova_viagem, rota)
+        except IntegrityError:
+            continue
+
+        criadas.append(f"Viagem criada: {rota.nome} - {horario.horario_saida}")
+
+    return criadas
+
+
+def gerar_viagens_da_rota(rota_id: Any, dias_futuros: int = 14) -> int:
+    """Gera as viagens de uma rota para hoje e os próximos dias. Quem chama já checou a permissão.
+
+    Usada quando a rota nasce e quando ganha horário, para ela não esperar o job semanal.
+    """
+    rota = db.session.get(Rota, rota_id)
+    if rota is None:
+        return 0
+
+    hoje = date.today()
+    total = 0
+    with transactional():
+        for i in range(dias_futuros):
+            total += len(_criar_viagens_da_rota_no_dia(rota, hoje + timedelta(days=i)))
+    return total
 
 
 def list_viagens_motorista(
