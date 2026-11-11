@@ -1,10 +1,12 @@
 from typing import Any
 
-from flask import current_app, request
+from flask import Response, current_app, jsonify, make_response, request
+from flask_jwt_extended import unset_jwt_cookies
 from flask_restx import Namespace, Resource
 
 from app.api.contracts import auth_contract
 from app.core.exceptions import ValidationError
+from app.core.sessao_cookie import pede_cookie, resposta_com_cookie
 from app.schemas.auth_schema import LoginRequestSchema, TokenResponseSchema
 from app.services import auth_service
 
@@ -30,7 +32,7 @@ class AuthLogin(Resource):
     )
     @api.expect(models["login_request"])
     @api.response(200, "Success", models["token_response"])
-    def post(self) -> tuple[dict[str, Any], int]:
+    def post(self) -> tuple[dict[str, Any], int] | Response:
         """
         Authenticate user and get JWT token.
 
@@ -41,7 +43,20 @@ class AuthLogin(Resource):
         payload = login_request_schema.load(data)
 
         response = auth_service.login_user(payload)
-        return token_response_schema.dump(response), 200
+        corpo = token_response_schema.dump(response)
+        if pede_cookie():
+            return resposta_com_cookie(corpo)
+        return corpo, 200
+
+
+@api.route("/logout")
+class AuthLogout(Resource):
+    @api.doc("auth_logout", responses={200: "Cookie de sessão apagado"})
+    def post(self) -> Response:
+        """Apaga o cookie de sessão do site. Para o app não muda nada, ele descarta o token."""
+        resposta = make_response(jsonify({"message": "Sessão encerrada."}), 200)
+        unset_jwt_cookies(resposta)
+        return resposta
 
 
 @api.route("/forgot-password")

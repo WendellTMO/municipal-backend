@@ -1,11 +1,12 @@
 from typing import Any
 
-from flask import request
+from flask import Response, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restx import Namespace, Resource
 
 from app.api.contracts import aluno_contract, user_contract
 from app.api.helpers import list_envelope
+from app.core.sessao_cookie import pede_cookie, resposta_com_cookie
 from app.schemas.aluno_schema import AlunoProvisionAccountRequestSchema
 from app.schemas.user_schema import (
     ChangePasswordRequestSchema,
@@ -176,13 +177,16 @@ class UserChangePassword(Resource):
     @api.expect(models["change_password_request"])
     @api.response(200, "Password changed successfully", models["change_password_response"])
     @jwt_required()
-    def post(self) -> tuple[dict[str, Any], int]:
+    def post(self) -> tuple[dict[str, Any], int] | Response:
         """Altera a senha do usuário logado (Requer senha atual)."""
         current_user_id = get_jwt_identity()
         payload = change_password_schema.load(request.get_json(silent=True) or {})
 
         resposta = user_service.change_password(current_user_id, payload)
-        return change_password_response_schema.dump(resposta), 200
+        corpo = change_password_response_schema.dump(resposta)
+        if pede_cookie():
+            return resposta_com_cookie(corpo)
+        return corpo, 200
 
 
 @api.route("/fcm-token")

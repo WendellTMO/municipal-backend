@@ -147,6 +147,13 @@ def configure_app(app: Flask, settings: Settings) -> None:
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=settings.JWT_EXPIRES_HOURS)
     app.config["DEBUG"] = settings.DEBUG
 
+    # O app manda o token no cabeçalho Authorization. O site recebe o mesmo token em
+    # cookie httpOnly (o JavaScript não lê), com CSRF duplo e SameSite Strict.
+    app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
+    app.config["JWT_COOKIE_SECURE"] = not settings.DEBUG
+    app.config["JWT_COOKIE_SAMESITE"] = "Strict"
+    app.config["JWT_COOKIE_CSRF_PROTECT"] = True
+
     # O flask_restx captura as exceções levantadas dentro dos Resources e
     # responde 500 genérico por conta própria; ele só delega para os
     # @app.errorhandler registrados abaixo quando PROPAGATE_EXCEPTIONS é
@@ -196,7 +203,7 @@ def register_extensions(app: Flask, settings: Settings) -> None:
         app,
         origins=settings.CORS_ORIGINS,
         supports_credentials=True,
-        allow_headers=["Content-Type", "Authorization"],
+        allow_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN", "X-Sessao-Cookie"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         max_age=86400,  # Cache preflight for 24 hours
     )
