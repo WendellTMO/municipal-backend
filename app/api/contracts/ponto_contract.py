@@ -58,6 +58,10 @@ def register_models(api):
                 allow_null=True,
                 description="Instituição de ensino no ponto (null quando não há)",
             ),
+            "endereco": fields.String(
+                allow_null=True,
+                description="Rua, número e bairro em uma linha (null quando não há endereço)",
+            ),
         },
     )
 

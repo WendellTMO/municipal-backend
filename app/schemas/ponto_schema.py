@@ -51,6 +51,8 @@ class PontoFlatResponseSchema(BaseSchema):
     ordem = fields.Integer()
     # Só vem preenchido em GET /rotas/{id}/pontos; nos demais usos o campo é omitido.
     instituicao = fields.Nested(PontoInstituicaoResponseSchema, allow_none=True)
+    # Também só em GET /rotas/{id}/pontos: "Rua, número - bairro", ou null sem endereço.
+    endereco = fields.String(allow_none=True)
 
 
 class PontoFlatListResponseSchema(BaseSchema):

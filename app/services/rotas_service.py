@@ -677,13 +677,32 @@ def delete_rota(user_id: str, rota_id: str) -> None:
     logger.info(f"Route {rota_id} ({rota_nome}) deleted by gestor {user_id}")
 
 
+def _endereco_em_texto(endereco: Any) -> str | None:
+    """Rua, número e bairro em uma linha, para o aluno reconhecer o ponto. Sem dados, None."""
+    if endereco is None:
+        return None
+    rua = endereco.logradouro
+    if rua and endereco.numero:
+        rua = f"{rua}, {endereco.numero}"
+    partes = []
+    for parte in (rua, endereco.bairro):
+        if parte:
+            partes.append(parte)
+    if not partes:
+        return None
+    return " - ".join(partes)
+
+
 def get_pontos_by_rota(user_id: str, rota_id: str) -> list[dict[str, Any]]:
     _get_rota_para_leitura(user_id, rota_id)
 
     # joinedload traz ponto e instituição na mesma query (evita N+1)
     rota_pontos = (
         RotaPonto.query.filter_by(rota_id=rota_id)
-        .options(joinedload(RotaPonto.ponto).joinedload(Ponto.instituicao))
+        .options(
+            joinedload(RotaPonto.ponto).joinedload(Ponto.instituicao),
+            joinedload(RotaPonto.ponto).joinedload(Ponto.endereco),
+        )
         .order_by(RotaPonto.ordem.asc())
         .all()
     )
@@ -706,6 +725,7 @@ def get_pontos_by_rota(user_id: str, rota_id: str) -> list[dict[str, Any]]:
                 "longitude": float(ponto.longitude),
                 "ordem": rp.ordem,
                 "instituicao": instituicao,
+                "endereco": _endereco_em_texto(ponto.endereco),
             }
         )
 

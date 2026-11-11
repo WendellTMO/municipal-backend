@@ -3,7 +3,7 @@
 import pytest
 
 from app.models.enum import TipoInstituicao
-from app.models.geo import Instituicao
+from app.models.geo import Endereco, Instituicao
 from app.models.rota import RotaPonto
 from tests.factories.geo_factory import PontoFactory
 
@@ -65,3 +65,40 @@ def test_varios_pontos_nao_fazem_n_mais_1(
     assert len(resp.get_json()["items"]) == 4
     assert len(qc.matching("from instituicao")) <= 1, qc.report()
     assert len(qc.matching("from ponto")) <= 1, qc.report()
+
+
+def test_endereco_do_ponto_vem_em_uma_linha(_db, gestor, rota, ponto, rota_ponto):
+    _db.session.add(
+        Endereco(ponto_id=ponto.id, logradouro="Rua das Flores", numero="120", bairro="Centro")
+    )
+    _db.session.commit()
+
+    resp = gestor.client.get(f"/v1/rotas/{rota.id}/pontos")
+
+    assert resp.get_json()["items"][0]["endereco"] == "Rua das Flores, 120 - Centro"
+
+
+def test_endereco_sem_numero_ou_sem_dados(_db, gestor, rota, ponto, rota_ponto):
+    resp = gestor.client.get(f"/v1/rotas/{rota.id}/pontos")
+    assert resp.get_json()["items"][0]["endereco"] is None
+
+    _db.session.add(Endereco(ponto_id=ponto.id, logradouro="Rua das Flores", bairro="Centro"))
+    _db.session.commit()
+    resp = gestor.client.get(f"/v1/rotas/{rota.id}/pontos")
+    assert resp.get_json()["items"][0]["endereco"] == "Rua das Flores - Centro"
+
+
+def test_endereco_nao_faz_n_mais_1(_db, gestor, prefeitura, rota, rota_ponto, query_counter):
+    for ordem in (2, 3, 4):
+        outro = PontoFactory(prefeitura_id=prefeitura.id)
+        _db.session.add(outro)
+        _db.session.flush()
+        _db.session.add(Endereco(ponto_id=outro.id, logradouro="Rua", bairro="Bairro"))
+        _db.session.add(RotaPonto(rota_id=rota.id, ponto_id=outro.id, ordem=ordem))
+    _db.session.commit()
+
+    with query_counter() as qc:
+        resp = gestor.client.get(f"/v1/rotas/{rota.id}/pontos")
+
+    assert resp.status_code == 200
+    assert len(qc.matching("from endereco")) <= 1, qc.report()
