@@ -131,3 +131,25 @@ class RotaInstituicaoOrdem(db.Model):
     ordem = db.Column(db.Integer, nullable=False)
 
     instituicao = relationship("Instituicao")
+
+
+class PadraoPontosAluno(db.Model):
+    """Pontos que o aluno costuma usar em cada horário da rota. Gravado ao confirmar presença.
+
+    Cada horário tem o seu: a circular da manhã e a da tarde são caminhos inversos.
+    """
+
+    __tablename__ = "aluno_horario_ponto"
+
+    aluno_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("aluno.usuario_id", ondelete="CASCADE"), primary_key=True
+    )
+    horario_rota_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("horario_rota.id", ondelete="CASCADE"), primary_key=True
+    )
+    ponto_embarque_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("ponto.id", ondelete="SET NULL"), nullable=True
+    )
+    ponto_desembarque_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("ponto.id", ondelete="SET NULL"), nullable=True
+    )

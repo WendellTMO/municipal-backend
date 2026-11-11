@@ -159,7 +159,15 @@ def test_aluno_de_fora_inscreve_le_e_confirma_presenca(_db, aluno, other_prefeit
     assert [v["viagem_id"] for v in agenda] == [str(cenario_p2["viagem"].id)]
 
     viagem_id = cenario_p2["viagem"].id
-    ponto_id = str(cenario_p2["ponto"].id)
+    # O embarque precisa ser outro ponto da rota: o ponto da instituição é o desembarque da ida.
+    parada = Ponto(
+        prefeitura_id=other_prefeitura.id, latitude=-7.21, longitude=-35.91, apelido="Parada P2"
+    )
+    _db.session.add(parada)
+    _db.session.flush()
+    _db.session.add(RotaPonto(rota_id=rota.id, ponto_id=parada.id, ordem=2))
+    _db.session.commit()
+    ponto_id = str(parada.id)
     sem_instituicao = aluno.client.put(
         f"/v1/viagens/{viagem_id}/confirmacao",
         json={"confirmacao": True, "ponto_embarque_id": ponto_id},
