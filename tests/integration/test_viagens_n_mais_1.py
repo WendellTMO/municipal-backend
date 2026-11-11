@@ -23,15 +23,18 @@ from app.services.viagens_service import list_viagens_gestor
 pytestmark = pytest.mark.integration
 
 
-def _monta_viagens(_db, rota, horario_rota, aluno, motorista, quantidade):
-    """Cria `quantidade` viagens na mesma rota, com aluno inscrito e confirmado."""
+def _monta_viagens(_db, rota, horario_rota, aluno, motorista, quantidade, primeiro_dia=1):
+    """Cria `quantidade` viagens na mesma rota, com aluno inscrito e confirmado.
+
+    Cada horário aceita uma viagem por dia, então quem monta duas levas passa `primeiro_dia`.
+    """
     if not _db.session.get(RotaAluno, (rota.id, aluno.user.id)):
         _db.session.add(RotaAluno(rota_id=rota.id, aluno_id=aluno.user.id))
         _db.session.flush()
 
     for i in range(quantidade):
         viagem = Viagem(
-            data=date.today() + timedelta(days=i + 1),
+            data=date.today() + timedelta(days=primeiro_dia + i),
             horario_rota_id=horario_rota.id,
             status=StatusViagem.AGENDADA,
             motorista_id=motorista.user.id,
@@ -67,7 +70,7 @@ def test_listagem_de_viagens_nao_cresce_com_o_numero_de_viagens(
     _monta_viagens(_db, rota, horario_rota, aluno, motorista, 2)
     com_2 = _queries_para_listar(_db, query_counter, gestor, 2)
 
-    _monta_viagens(_db, rota, horario_rota, aluno, motorista, 6)
+    _monta_viagens(_db, rota, horario_rota, aluno, motorista, 6, primeiro_dia=3)
     com_8 = _queries_para_listar(_db, query_counter, gestor, 8)
 
     crescimento = com_8 - com_2

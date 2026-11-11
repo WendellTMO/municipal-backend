@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import and_, func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import contains_eager, joinedload, selectinload
 
 from app.core.exceptions import (
@@ -384,11 +385,15 @@ def confirmar_presenca_aluno(
     confirmacao: bool = data["confirmacao"]
 
     with transactional():
-        viagem = db.session.get(Viagem, viagem_id)
+        # Trava a viagem: o toque duplo do aluno espera o primeiro terminar, em vez de criar o
+        # registro duas vezes e virar 409.
+        viagem = db.session.get(Viagem, viagem_id, with_for_update=True, populate_existing=True)
         if not viagem:
             raise NotFoundError("Viagem não encontrada")
         if confirmacao and viagem.status == StatusViagem.CANCELADA:
             raise ValidationError("Esta viagem foi cancelada")
+        if confirmacao and viagem.status == StatusViagem.FINALIZADA:
+            raise ValidationError("Esta viagem já terminou")
 
         registro = db.session.get(AlunosConfirmados, (viagem.id, aluno.usuario_id))
 
@@ -626,17 +631,23 @@ def gerar_viagens_em_lote(user_id: str, data_viagem: date) -> dict[str, Any]:
                 if existe:
                     continue
 
-                nova_viagem = Viagem(
-                    data=data_viagem,
-                    horario_rota_id=horario.id,
-                    motorista_id=rota.motorista_padrao_id,
-                    veiculo_id=rota.veiculo_padrao_id,
-                    status=StatusViagem.AGENDADA,
-                )
-                db.session.add(nova_viagem)
-                db.session.flush()
+                try:
+                    # Savepoint: se outro processo criou a mesma viagem agora (job e gestor ao
+                    # mesmo tempo), a restrição única recusa e só esta é pulada, não o dia todo.
+                    with db.session.begin_nested():
+                        nova_viagem = Viagem(
+                            data=data_viagem,
+                            horario_rota_id=horario.id,
+                            motorista_id=rota.motorista_padrao_id,
+                            veiculo_id=rota.veiculo_padrao_id,
+                            status=StatusViagem.AGENDADA,
+                        )
+                        db.session.add(nova_viagem)
+                        db.session.flush()
 
-                _popular_dados_da_viagem(nova_viagem, rota)
+                        _popular_dados_da_viagem(nova_viagem, rota)
+                except IntegrityError:
+                    continue
 
                 relatorio["viagens_criadas"] += 1
                 relatorio["detalhes"].append(
@@ -724,7 +735,8 @@ def calcular_km_percorrido(viagem_id: Any) -> float:
 def controlar_viagem(user_id: str, viagem_id: str, data: dict[str, Any]) -> Viagem:
     """Start or finish a trip. Expects schema-validated payload with 'acao'."""
     user = db.session.get(User, user_id)
-    viagem = db.session.get(Viagem, viagem_id)
+    # Trava a linha: dois INICIAR ou INICIAR e CANCELAR ao mesmo tempo passam um de cada vez.
+    viagem = db.session.get(Viagem, viagem_id, with_for_update=True, populate_existing=True)
 
     if not user:
         raise NotFoundError("Usuário não encontrado")
@@ -1025,7 +1037,7 @@ def cancelar_viagem(user_id: str, viagem_id: str, motivo: str | None = None) -> 
     if not user or user.role not in (UserRole.GESTOR, UserRole.MOTORISTA):
         raise ForbiddenError("Apenas gestores e motoristas podem cancelar viagens")
 
-    viagem = db.session.get(Viagem, viagem_id)
+    viagem = db.session.get(Viagem, viagem_id, with_for_update=True, populate_existing=True)
     if not viagem:
         raise NotFoundError("Viagem não encontrada")
     _exigir_viagem_da_prefeitura(user, viagem)

@@ -51,6 +51,11 @@ class Viagem(db.Model):
         db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
     )
 
+    __table_args__ = (
+        # Uma viagem por horário em cada dia. Linhas com horario_rota_id nulo não colidem.
+        db.UniqueConstraint("horario_rota_id", "data", name="uq_viagem_horario_data"),
+    )
+
     horario_rota = relationship("HorarioRota")
     motorista = relationship("Motorista")
     veiculo = relationship("Onibus")
