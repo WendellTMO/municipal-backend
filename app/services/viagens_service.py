@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import contains_eager, joinedload, selectinload
 
+from app.core.authz import exigir_motorista_e_onibus_da_prefeitura
 from app.core.exceptions import (
     AppError,
     ConflictError,
@@ -555,6 +556,7 @@ def gerar_viagem(user_id: str, data_input: dict) -> Viagem:
 
     if rota.prefeitura_id != user.prefeitura_id:
         raise ForbiddenError("Acesso negado")
+    exigir_motorista_e_onibus_da_prefeitura(user.prefeitura_id, motorista_id, None)
 
     dia_semana = _get_dia_semana_enum(data_viagem)
 

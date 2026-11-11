@@ -18,7 +18,6 @@ from app.core.exceptions import (
     ConflictError,
     ForbiddenError,
     NotFoundError,
-    UnauthorizedError,
     ValidationError,
 )
 from app.models.enum import UserRole, UserStatus
@@ -428,10 +427,15 @@ def test_get_motoristas_nao_vaza_outra_prefeitura(_db, gestor, other_motorista):
     }
 
 
-def test_get_motoristas_nao_exige_papel_de_gestor(_db, aluno, motorista):
-    # Usa `_get_user_or_404`, não `_get_gestor_or_403`: qualquer usuário lista
-    # os motoristas da própria prefeitura.
-    assert [m.id for m in get_motoristas_by_municipio(str(aluno.user.id))] == [motorista.user.id]
+def test_get_motoristas_recusa_quem_nao_e_gestor(_db, aluno, motorista):
+    with pytest.raises(ForbiddenError):
+        get_motoristas_by_municipio(str(aluno.user.id))
+    with pytest.raises(ForbiddenError):
+        get_motoristas_by_municipio(str(motorista.user.id))
+
+
+def test_get_motoristas_do_gestor_so_da_propria_prefeitura(_db, gestor, motorista, other_motorista):
+    assert [m.id for m in get_motoristas_by_municipio(str(gestor.user.id))] == [motorista.user.id]
 
 
 # ─── update_profile ─────────────────────────────────────────────────────────

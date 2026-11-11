@@ -21,6 +21,7 @@ from app.core.exceptions import (
 from app.models.enum import StatusOcorrencia, TipoOcorrencia
 from app.models.notificacao import Notificacao
 from app.models.ocorrencia import Ocorrencia
+from app.models.rota import RotaAluno
 from app.services import ocorrencia_service
 from app.services.ocorrencia_service import OcorrenciaService
 
@@ -174,17 +175,25 @@ def test_criar_traduz_o_tipo_no_titulo_da_notificacao(_db, aluno, gestor):
 # ─── criar: falhas conhecidas ───────────────────────────────────────────────
 
 
-def test_criar_aceita_viagem_de_outra_prefeitura(
+def test_criar_recusa_viagem_de_outra_prefeitura(
     _db, other_aluno, viagem_futura_agendada_com_motorista
 ):
-    """
-    CARACTERIZAÇÃO DE FALHA CONHECIDA (não corrigida aqui).
+    """Aluno de uma prefeitura não reporta ocorrência contra viagem de outra."""
+    with pytest.raises(NotFoundError):
+        OcorrenciaService.criar(
+            str(other_aluno.user.id),
+            {"tipo": "ATRASO", "viagem_id": str(viagem_futura_agendada_com_motorista.id)},
+        )
 
-    O `viagem_id` só é checado quanto à existência. Nada compara a prefeitura
-    da viagem com a do autor, então um aluno reporta ocorrência contra uma
-    viagem de outra prefeitura, e o gestor de lá nunca fica sabendo porque a
-    notificação vai para os gestores da prefeitura do autor.
-    """
+    assert Ocorrencia.query.count() == 0
+
+
+def test_criar_aceita_viagem_de_rota_em_que_o_aluno_de_fora_esta_inscrito(
+    _db, other_aluno, rota, viagem_futura_agendada_com_motorista
+):
+    _db.session.add(RotaAluno(rota_id=rota.id, aluno_id=other_aluno.user.id))
+    _db.session.commit()
+
     ocorrencia = OcorrenciaService.criar(
         str(other_aluno.user.id),
         {"tipo": "ATRASO", "viagem_id": str(viagem_futura_agendada_com_motorista.id)},

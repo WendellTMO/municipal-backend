@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import case, or_
 from sqlalchemy.orm import joinedload
 
+from app.core.authz import exigir_motorista_e_onibus_da_prefeitura
 from app.core.exceptions import (
     ForbiddenError,
     NotFoundError,
@@ -357,6 +358,9 @@ def create_rota(gestor_id: str, data: dict[str, Any]) -> Rota:
         motorista_id = data.get("motorista_padrao_id")
         if not motorista_id and user.role == UserRole.MOTORISTA:
             motorista_id = user.id
+        exigir_motorista_e_onibus_da_prefeitura(
+            user.prefeitura_id, motorista_id, data.get("veiculo_padrao_id")
+        )
 
         rota = Rota(
             nome=nome,
@@ -593,6 +597,10 @@ def update_rota(user_id: str, rota_id: str, data: dict[str, Any]) -> Rota:
         raise ForbiddenError("Acesso negado")
 
     updated_fields: list[str] = []
+
+    exigir_motorista_e_onibus_da_prefeitura(
+        rota.prefeitura_id, data.get("motorista_padrao_id"), data.get("veiculo_padrao_id")
+    )
 
     with transactional():
         if "nome" in data:

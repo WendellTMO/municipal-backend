@@ -9,6 +9,7 @@ from app.core.transaction import transactional
 from app.models.base import db
 from app.models.enum import StatusOcorrencia, TipoOcorrencia, UserRole
 from app.models.ocorrencia import Ocorrencia
+from app.models.rota import RotaAluno
 from app.models.user import Gestor, User
 from app.models.viagem import Viagem
 from app.services.notificacao_service import NotificacaoService
@@ -27,6 +28,18 @@ def _ocorrencia_da_prefeitura(ocorrencia: Ocorrencia, prefeitura_id: Any) -> boo
         and viagem.horario_rota is not None
         and viagem.horario_rota.rota.prefeitura_id == prefeitura_id
     )
+
+
+def _viagem_do_autor(user: User, viagem: Viagem) -> bool:
+    """O autor reporta viagem da própria prefeitura, ou de rota em que o aluno de fora está inscrito."""
+    if viagem.horario_rota is None:
+        return False
+    rota = viagem.horario_rota.rota
+    if rota.prefeitura_id == user.prefeitura_id:
+        return True
+    if user.role != UserRole.ALUNO:
+        return False
+    return RotaAluno.query.filter_by(rota_id=rota.id, aluno_id=user.id).first() is not None
 
 
 class OcorrenciaService:
@@ -53,7 +66,7 @@ class OcorrenciaService:
         viagem_id = dados.get("viagem_id")
         if viagem_id:
             viagem = db.session.get(Viagem, viagem_id)
-            if not viagem:
+            if not viagem or not _viagem_do_autor(user, viagem):
                 raise NotFoundError("Viagem não encontrada.")
 
         with transactional():

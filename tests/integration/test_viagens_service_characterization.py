@@ -704,26 +704,20 @@ def test_gerar_viagem_aceita_motorista_como_papel(_db, motorista, rota):
     assert nova.status == StatusViagem.AGENDADA
 
 
-def test_gerar_viagem_usa_motorista_do_payload_sem_validar(_db, gestor, rota, other_motorista):
-    """
-    CARACTERIZAÇÃO DE FALHA CONHECIDA (não corrigida aqui).
-
-    ``motorista_id`` vem do payload e é gravado sem checagem de papel nem de
-    prefeitura: um motorista de outra prefeitura entra na viagem.
-    """
+def test_gerar_viagem_recusa_motorista_de_outra_prefeitura(_db, gestor, rota, other_motorista):
+    """``motorista_id`` do payload precisa ser da prefeitura de quem gera a viagem."""
     alvo = date.today() + timedelta(days=1)
     _horario_operando_em(_db, rota, alvo)
 
-    nova = gerar_viagem(
-        str(gestor.user.id),
-        {
-            "rota_id": str(rota.id),
-            "data": alvo,
-            "motorista_id": str(other_motorista.user.id),
-        },
-    )
-
-    assert nova.motorista_id == other_motorista.user.id
+    with pytest.raises(NotFoundError):
+        gerar_viagem(
+            str(gestor.user.id),
+            {
+                "rota_id": str(rota.id),
+                "data": alvo,
+                "motorista_id": str(other_motorista.user.id),
+            },
+        )
 
 
 # ─── gerar_viagens_em_lote ──────────────────────────────────────────────────
@@ -1383,7 +1377,9 @@ def test_obter_localizacao_lista_so_as_paradas_ja_visitadas(
     a_visitar = _ponto(_db, prefeitura.id, -23.56, -46.64, "Ainda nao")
     viagem_id = viagem_futura_iniciada_com_motorista.id
     _db.session.add(ViagemPonto(viagem_id=viagem_id, ponto_id=visitado.id, ordem=1, visitado=True))
-    _db.session.add(ViagemPonto(viagem_id=viagem_id, ponto_id=a_visitar.id, ordem=2, visitado=False))
+    _db.session.add(
+        ViagemPonto(viagem_id=viagem_id, ponto_id=a_visitar.id, ordem=2, visitado=False)
+    )
     _db.session.commit()
 
     resultado = obter_localizacao_onibus(str(motorista.user.id), str(viagem_id))

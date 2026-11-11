@@ -256,7 +256,7 @@ def test_authz_error_contract(
 
 
 @pytest.mark.integration
-def test_authz_falhas_conhecidas(client, aluno, motorista):
+def test_authz_falhas_conhecidas(client, aluno):
     """Fotografa buracos REAIS de autorização que existem hoje.
 
     ATENÇÃO: ao contrário do teste acima, o que está travado aqui NÃO é o
@@ -266,18 +266,7 @@ def test_authz_falhas_conhecidas(client, aluno, motorista):
     Quando cada uma for corrigida, este teste vai quebrar — e isso é o
     sinal de sucesso. Remova o bloco correspondente junto com a correção.
     """
-    # 1. user_service.get_motoristas_by_municipio usa _get_user_or_404 no
-    #    lugar de _get_gestor_or_403, embora o próprio Swagger do endpoint
-    #    declare `403: Forbidden - not a gestor`. Resultado: um aluno lista
-    #    os motoristas da prefeitura com CPF, e-mail e telefone.
-    #    O parâmetro `motorista` não é referenciado abaixo, mas precisa existir:
-    #    é o efeito colateral do fixture que garante um motorista na mesma
-    #    prefeitura do `aluno`, senão a lista vem vazia.
-    r = client.get("/v1/users/motoristas", headers=aluno.headers)
-    assert r.status_code == 200, "corrigido? troque por 403 e remova este bloco"
-    assert "cpf" in (r.get_json() or {})["items"][0]
-
-    # 2. Envelope de erro inconsistente: validação via reqparse do flask_restx
+    # Envelope de erro inconsistente: validação via reqparse do flask_restx
     #    (@api.expect(parser, validate=True)) responde no formato do próprio
     #    restx e não passa pelos @app.errorhandler. O cliente recebe 400 sem
     #    `error.code`, quebrando o contrato garantido por test_error_contract.

@@ -3,7 +3,7 @@
 import logging
 from typing import Any, cast
 
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import generate_password_hash
 
 from app.core.authz import get_gestor_or_403, get_user_or_404
 from app.core.exceptions import (
@@ -11,7 +11,6 @@ from app.core.exceptions import (
     ConflictError,
     ForbiddenError,
     NotFoundError,
-    UnauthorizedError,
     ValidationError,
 )
 from app.core.transaction import transactional
@@ -167,7 +166,7 @@ def change_password(user_id: str, data: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_motoristas_by_municipio(gestor_id: str):
-    gestor = get_user_or_404(gestor_id)
+    gestor = get_gestor_or_403(gestor_id)
 
     motoristas = User.query.filter(
         User.prefeitura_id == gestor.prefeitura_id, User.role == UserRole.MOTORISTA
