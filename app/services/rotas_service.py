@@ -25,6 +25,7 @@ from app.models.rota import (
     RotaAluno,
     RotaInstituicaoOrdem,
     RotaPonto,
+    pontos_no_sentido,
 )
 from app.models.user import User
 from app.models.viagem import Viagem
@@ -378,6 +379,7 @@ def create_rota(gestor_id: str, data: dict[str, Any]) -> Rota:
             for p_data in data["pontos"]:
                 ponto_id = p_data.get("ponto_id")
                 ordem = p_data.get("ordem", 0)
+                sentido = p_data.get("sentido", "AMBOS")
 
                 if ponto_id:
                     # Link an existing ponto by ID
@@ -391,7 +393,9 @@ def create_rota(gestor_id: str, data: dict[str, Any]) -> Rota:
                         raise NotFoundError(f"Ponto {ponto_id} não encontrado")
                     if existing_ponto.prefeitura_id != rota.prefeitura_id:
                         raise ForbiddenError(f"O ponto {ponto_id} pertence a outra prefeitura")
-                    rota_ponto = RotaPonto(rota_id=rota.id, ponto_id=ponto_id, ordem=ordem)
+                    rota_ponto = RotaPonto(
+                        rota_id=rota.id, ponto_id=ponto_id, ordem=ordem, sentido=sentido
+                    )
                     db.session.add(rota_ponto)
                 elif "latitude" in p_data and "longitude" in p_data:
                     # Create a brand-new ponto from coordinates
@@ -404,7 +408,9 @@ def create_rota(gestor_id: str, data: dict[str, Any]) -> Rota:
                     db.session.add(novo_ponto)
                     db.session.flush()
 
-                    rota_ponto = RotaPonto(rota_id=rota.id, ponto_id=novo_ponto.id, ordem=ordem)
+                    rota_ponto = RotaPonto(
+                        rota_id=rota.id, ponto_id=novo_ponto.id, ordem=ordem, sentido=sentido
+                    )
                     db.session.add(rota_ponto)
 
         if "horarios" in data:
@@ -458,6 +464,7 @@ def add_ponto(gestor_id: str, rota_id: str, data: dict[str, Any]) -> None:
         for p in pontos:
             ponto_id = p.get("ponto_id")
             ordem = p.get("ordem", 1)
+            sentido = p.get("sentido", "AMBOS")
 
             # Case 1: Link existing point by ID
             if ponto_id:
@@ -467,7 +474,9 @@ def add_ponto(gestor_id: str, rota_id: str, data: dict[str, Any]) -> None:
                 if existing_ponto.prefeitura_id != rota.prefeitura_id:
                     raise ForbiddenError(f"O ponto {ponto_id} pertence a outra prefeitura")
 
-                novo_rota_ponto = RotaPonto(rota_id=rota.id, ponto_id=ponto_id, ordem=ordem)
+                novo_rota_ponto = RotaPonto(
+                        rota_id=rota.id, ponto_id=ponto_id, ordem=ordem, sentido=sentido
+                    )
                 db.session.add(novo_rota_ponto)
 
             # Case 2: Create new point with coordinates
@@ -488,7 +497,9 @@ def add_ponto(gestor_id: str, rota_id: str, data: dict[str, Any]) -> None:
                 db.session.add(ponto)
                 db.session.flush()
 
-                novo_rota_ponto = RotaPonto(rota_id=rota.id, ponto_id=ponto.id, ordem=ordem)
+                novo_rota_ponto = RotaPonto(
+                    rota_id=rota.id, ponto_id=ponto.id, ordem=ordem, sentido=sentido
+                )
                 db.session.add(novo_rota_ponto)
 
 
@@ -723,7 +734,10 @@ def _endereco_em_texto(endereco: Any) -> str | None:
     return " - ".join(partes)
 
 
-def get_pontos_by_rota(user_id: str, rota_id: str) -> list[dict[str, Any]]:
+def get_pontos_by_rota(
+    user_id: str, rota_id: str, sentido: str | None = None
+) -> list[dict[str, Any]]:
+    """Pontos da rota em ordem. Com `sentido` (IDA ou VOLTA), só os que valem naquele sentido."""
     _get_rota_para_leitura(user_id, rota_id)
 
     # joinedload traz ponto e instituição na mesma query (evita N+1)
@@ -738,7 +752,7 @@ def get_pontos_by_rota(user_id: str, rota_id: str) -> list[dict[str, Any]]:
     )
 
     resultado = []
-    for rp in rota_pontos:
+    for rp in pontos_no_sentido(rota_pontos, sentido):
         ponto = rp.ponto
         instituicao = None
         if ponto.instituicao:
@@ -754,6 +768,7 @@ def get_pontos_by_rota(user_id: str, rota_id: str) -> list[dict[str, Any]]:
                 "latitude": float(ponto.latitude),
                 "longitude": float(ponto.longitude),
                 "ordem": rp.ordem,
+                "sentido": rp.sentido,
                 "instituicao": instituicao,
                 "endereco": _endereco_em_texto(ponto.endereco),
             }

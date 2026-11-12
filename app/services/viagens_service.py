@@ -28,6 +28,7 @@ from app.models.rota import (
     Rota,
     RotaAluno,
     RotaPonto,
+    pontos_no_sentido,
 )
 from app.models.user import Aluno, User
 from app.models.viagem import AlunosConfirmados, TelemetriaViagem, Viagem, ViagemPonto
@@ -85,7 +86,7 @@ def _get_dia_semana_enum(data_obj: date) -> DiaDaSemana:
     return dia
 
 
-def _popular_dados_da_viagem(viagem_obj: Viagem, rota_obj: Rota) -> None:
+def _popular_dados_da_viagem(viagem_obj: Viagem, rota_obj: Rota, horario: HorarioRota) -> None:
     """Helper function that copies students and stops from route to trip."""
     inscricoes = db.session.query(RotaAluno).filter_by(rota_id=rota_obj.id).all()
 
@@ -116,7 +117,7 @@ def _popular_dados_da_viagem(viagem_obj: Viagem, rota_obj: Rota) -> None:
     )
 
     ordem_real = 1
-    for pr in pontos_rota:
+    for pr in pontos_no_sentido(pontos_rota, horario.sentido):
         vp = ViagemPonto(
             viagem_id=viagem_obj.id, ponto_id=pr.ponto_id, ordem=ordem_real, visitado=False
         )
@@ -523,8 +524,15 @@ def listar_pontos_embarque(user_id: str, viagem_id: str) -> list[dict]:
         .all()
     )
 
+    rota_pontos = []
+    for rp, _ponto in pontos_query:
+        rota_pontos.append(rp)
+    validos = pontos_no_sentido(rota_pontos, horario.sentido)
+
     resultado = []
     for rp, ponto_obj in pontos_query:
+        if rp not in validos:
+            continue
         resultado.append(
             {
                 "ponto_id": str(ponto_obj.id),
@@ -532,6 +540,7 @@ def listar_pontos_embarque(user_id: str, viagem_id: str) -> list[dict]:
                 "latitude": float(ponto_obj.latitude),
                 "longitude": float(ponto_obj.longitude),
                 "ordem": rp.ordem,
+                "sentido": rp.sentido,
             }
         )
 
@@ -595,7 +604,7 @@ def gerar_viagem(user_id: str, data_input: dict) -> Viagem:
         db.session.add(nova_viagem)
         db.session.flush()  # ensure nova_viagem.id
 
-        _popular_dados_da_viagem(nova_viagem, rota)
+        _popular_dados_da_viagem(nova_viagem, rota, horario_selecionado)
 
         return nova_viagem
 
@@ -657,7 +666,7 @@ def _criar_viagens_da_rota_no_dia(rota: Rota, data_viagem: date) -> list[str]:
                 db.session.add(nova_viagem)
                 db.session.flush()
 
-                _popular_dados_da_viagem(nova_viagem, rota)
+                _popular_dados_da_viagem(nova_viagem, rota, horario)
         except IntegrityError:
             continue
 

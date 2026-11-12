@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -55,9 +56,27 @@ class RotaPonto(db.Model):
     )
 
     ordem = db.Column(db.Integer, nullable=False)
+    # AMBOS, IDA ou VOLTA: em quais viagens da rota o ponto entra (CIRCULAR usa todos).
+    sentido = db.Column(db.String(10), nullable=False, default="AMBOS", server_default="AMBOS")
+
+    __table_args__ = (
+        db.CheckConstraint("sentido IN ('AMBOS', 'IDA', 'VOLTA')", name="ck_rota_ponto_sentido"),
+    )
 
     rota = relationship("Rota", back_populates="pontos_padrao")
     ponto = relationship("Ponto")
+
+
+def pontos_no_sentido(rota_pontos: list["RotaPonto"], sentido: Any) -> list["RotaPonto"]:
+    """Pontos da rota que valem num sentido. AMBOS vale sempre; CIRCULAR e sem sentido usam todos."""
+    sentido = getattr(sentido, "value", sentido)
+    if sentido not in ("IDA", "VOLTA"):
+        return list(rota_pontos)
+    resultado = []
+    for rota_ponto in rota_pontos:
+        if rota_ponto.sentido in ("AMBOS", sentido):
+            resultado.append(rota_ponto)
+    return resultado
 
 
 class HorarioRota(db.Model):

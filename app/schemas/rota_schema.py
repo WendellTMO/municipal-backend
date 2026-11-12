@@ -15,6 +15,7 @@ class RotaPontoAddRequestSchema(BaseSchema):
 
     ponto_id = fields.String(required=True)
     ordem = fields.Integer(required=True)
+    sentido = fields.String(load_default="AMBOS", validate=validate.OneOf(["AMBOS", "IDA", "VOLTA"]))
 
 
 class RotaPontosAddRequestSchema(BaseSchema):

@@ -49,6 +49,8 @@ class PontoFlatResponseSchema(BaseSchema):
     latitude = fields.Float()
     longitude = fields.Float()
     ordem = fields.Integer()
+    # AMBOS, IDA ou VOLTA. Só vem em GET /rotas/{id}/pontos e em /viagens/{id}/pontos-embarque.
+    sentido = fields.String()
     # Só vem preenchido em GET /rotas/{id}/pontos; nos demais usos o campo é omitido.
     instituicao = fields.Nested(PontoInstituicaoResponseSchema, allow_none=True)
     # Também só em GET /rotas/{id}/pontos: "Rua, número - bairro", ou null sem endereço.

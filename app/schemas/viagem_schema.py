@@ -16,7 +16,7 @@ from marshmallow.validate import Length, OneOf, Range
 from app.models.base import db
 from app.models.enum import SentidoViagem, StatusViagem, UserRole
 from app.models.geo import Instituicao
-from app.models.rota import RotaAluno
+from app.models.rota import RotaAluno, pontos_no_sentido
 from app.schemas.common import BaseSchema
 from app.models.user import User
 from app.schemas.validators import validate_uuid4
@@ -390,8 +390,9 @@ class ViagemResponseSchema(BaseSchema):
     def get_origem(self, obj):
         if obj.horario_rota and obj.horario_rota.rota:
             rota = obj.horario_rota.rota
-            if rota.pontos_padrao and len(rota.pontos_padrao) > 0:
-                primeiro_ponto = sorted(rota.pontos_padrao, key=lambda p: p.ordem)[0]
+            pontos = pontos_no_sentido(rota.pontos_padrao, obj.horario_rota.sentido)
+            if pontos:
+                primeiro_ponto = sorted(pontos, key=lambda p: p.ordem)[0]
                 if primeiro_ponto.ponto:
                     return primeiro_ponto.ponto.apelido
         return None
@@ -399,8 +400,9 @@ class ViagemResponseSchema(BaseSchema):
     def get_destino(self, obj):
         if obj.horario_rota and obj.horario_rota.rota:
             rota = obj.horario_rota.rota
-            if rota.pontos_padrao and len(rota.pontos_padrao) > 0:
-                ultimo_ponto = sorted(rota.pontos_padrao, key=lambda p: p.ordem)[-1]
+            pontos = pontos_no_sentido(rota.pontos_padrao, obj.horario_rota.sentido)
+            if pontos:
+                ultimo_ponto = sorted(pontos, key=lambda p: p.ordem)[-1]
                 if ultimo_ponto.ponto:
                     return ultimo_ponto.ponto.apelido
         return None

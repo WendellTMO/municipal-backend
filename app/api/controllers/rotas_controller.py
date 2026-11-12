@@ -149,7 +149,10 @@ class RotaPontosResource(Resource):
     @jwt_required()
     def get(self, id: str) -> tuple[dict[str, Any], int]:
         current_user_id = get_jwt_identity()
-        pontos = rotas_service.get_pontos_by_rota(current_user_id, id)
+        sentido = request.args.get("sentido", "").upper()
+        if sentido not in ("IDA", "VOLTA"):
+            sentido = None
+        pontos = rotas_service.get_pontos_by_rota(current_user_id, id, sentido)
         return (
             ponto_flat_list_response_schema.dump(list_envelope(pontos)),
             200,
