@@ -40,6 +40,8 @@ class Viagem(db.Model):
     motorista_lon = db.Column(db.Numeric(11, 8), nullable=True)
     motorista_gps_hora = db.Column(db.DateTime(timezone=True), nullable=True)
     localizacao_solicitada_em = db.Column(db.DateTime(timezone=True), nullable=True)
+    # Demo: último pedido de um aluno para quem está no ônibus compartilhar a localização.
+    pedido_colaborativo_em = db.Column(db.DateTime(timezone=True), nullable=True)
     # it must change to a version 2
     aviso_24h_enviado = db.Column(db.Boolean, default=False, nullable=False)
     aviso_10min_enviado = db.Column(db.Boolean, default=False, nullable=False)
@@ -156,3 +158,21 @@ class TelemetriaViagem(db.Model):
         "Viagem",
         backref=db.backref("rastros_telemetria", lazy="dynamic", cascade="all, delete-orphan"),
     )
+
+
+class ViagemRelato(db.Model):
+    """Demo: posição que um aluno a bordo compartilha. É apagada quando a viagem acaba."""
+
+    __tablename__ = "viagem_relato"
+
+    viagem_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("viagem.id", ondelete="CASCADE"), primary_key=True
+    )
+    aluno_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("aluno.usuario_id", ondelete="CASCADE"), primary_key=True
+    )
+    latitude = db.Column(db.Float, nullable=False)
+    longitude = db.Column(db.Float, nullable=False)
+    # Erro estimado pelo próprio celular, em metros.
+    precisao_m = db.Column(db.Float, nullable=False)
+    recebido_em = db.Column(db.DateTime(timezone=True), nullable=False)

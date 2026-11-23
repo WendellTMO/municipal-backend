@@ -8,6 +8,7 @@ from app.models.enum import StatusViagem
 from app.models.rota import RotaAluno
 from app.models.user import Aluno, User
 from app.models.viagem import AlunosConfirmados, Viagem
+from app.services import localizacao_colaborativa_service
 from app.services.notificacao_service import NotificacaoService
 
 logger = logging.getLogger(__name__)
@@ -124,20 +125,28 @@ def verificar_viagens_10min(agora: datetime | None = None):
 
             lista_univ = ", ".join(universidades) if universidades else "Nenhum aluno confirmado"
 
-            NotificacaoService._criar_notificacao_interna(
-                usuario_id=viagem.motorista_id,
-                titulo="🚌 Viagem a iniciar em 10 minutos",
-                mensagem=f"Prepare-se! As paragens universitárias desta viagem serão: {lista_univ}.",
-            )
+            # Viagem sem motorista atribuído: sem este teste a gravação falha e o job inteiro
+            # desfaz o aviso dos alunos.
+            if viagem.motorista_id is not None:
+                NotificacaoService._criar_notificacao_interna(
+                    usuario_id=viagem.motorista_id,
+                    titulo="🚌 Viagem a iniciar em 10 minutos",
+                    mensagem=(
+                        f"Prepare-se! As paragens universitárias desta viagem serão: {lista_univ}."
+                    ),
+                )
 
             hora = _inicio_da_viagem(viagem).strftime("%H:%M")
+            extra = ""
+            if localizacao_colaborativa_service.ativa():
+                extra = " Se estiver no ônibus, toque em Compartilhar localização no app."
             for conf in confirmados:
                 aluno_user = db.session.get(User, conf.aluno_id)
                 if aluno_user and getattr(aluno_user, "receber_notificacoes", True):
                     NotificacaoService._criar_notificacao_interna(
                         usuario_id=aluno_user.id,
                         titulo="🚌 Seu ônibus sai em 10 minutos",
-                        mensagem=f"A viagem sai às {hora}. Vá para o seu ponto de embarque!",
+                        mensagem=f"A viagem sai às {hora}. Vá para o seu ponto de embarque!{extra}",
                     )
 
             viagem.aviso_10min_enviado = True

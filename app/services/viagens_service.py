@@ -1173,13 +1173,21 @@ def atualizar_localizacao(user_id: str, viagem_id: str, data: dict) -> dict:
 
     agora = datetime.now(UTC)
     observadores = _info_observadores(viagem, agora)
+    return registrar_posicao_da_viagem(
+        viagem, data["latitude"], data["longitude"], agora, observadores
+    )
 
-    viagem.motorista_lat = data["latitude"]
-    viagem.motorista_lon = data["longitude"]
+
+def registrar_posicao_da_viagem(
+    viagem: Viagem, latitude: Any, longitude: Any, agora: datetime, observadores: dict
+) -> dict:
+    """Grava a posição do ônibus, guarda a telemetria e avisa os alunos do próximo ponto."""
+    viagem.motorista_lat = latitude
+    viagem.motorista_lon = longitude
     viagem.motorista_gps_hora = agora
 
     rastro = TelemetriaViagem(
-        viagem_id=viagem.id, latitude=data["latitude"], longitude=data["longitude"], timestamp=agora
+        viagem_id=viagem.id, latitude=latitude, longitude=longitude, timestamp=agora
     )
     db.session.add(rastro)
     db.session.commit()
@@ -1200,8 +1208,8 @@ def atualizar_localizacao(user_id: str, viagem_id: str, data: dict) -> dict:
     ponto_geo = proximo_ponto.ponto
 
     distancia_metros = calcular_distancia_metros(
-        float(data["latitude"]),
-        float(data["longitude"]),
+        float(latitude),
+        float(longitude),
         float(ponto_geo.latitude),
         float(ponto_geo.longitude),
     )

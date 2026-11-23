@@ -29,7 +29,7 @@ from app.schemas.viagem_schema import (
     ViagemPontoCreateRequestSchema,
     ViagemResponseSchema,
 )
-from app.services import viagens_service
+from app.services import localizacao_colaborativa_service, viagens_service
 
 api = Namespace("viagens", description="Execução de Viagens")
 
@@ -274,3 +274,37 @@ class ViagemLocalizacaoAluno(Resource):
         )
 
         return resultado, 200
+
+
+@api.route("/<string:id>/colaborativa")
+class ViagemColaborativaEstadoResource(Resource):
+    @api.doc("estado_localizacao_colaborativa")
+    @jwt_required()
+    def get(self, id: str) -> tuple[dict[str, Any], int]:
+        """(Demo) Estado do compartilhamento de localização pelos alunos."""
+        return localizacao_colaborativa_service.estado(get_jwt_identity(), id), 200
+
+
+@api.route("/<string:id>/colaborativa/relato")
+class ViagemColaborativaRelatoResource(Resource):
+    @api.doc("enviar_relato_colaborativo")
+    @jwt_required()
+    def post(self, id: str) -> tuple[dict[str, Any], int]:
+        """(Demo) O aluno a bordo envia a sua posição para localizar o ônibus."""
+        data = request.get_json(silent=True) or {}
+        return localizacao_colaborativa_service.enviar_relato(get_jwt_identity(), id, data), 200
+
+    @api.doc("parar_relato_colaborativo")
+    @jwt_required()
+    def delete(self, id: str) -> tuple[dict[str, Any], int]:
+        """(Demo) O aluno para de compartilhar a localização."""
+        return localizacao_colaborativa_service.parar_relato(get_jwt_identity(), id), 200
+
+
+@api.route("/<string:id>/colaborativa/pedido")
+class ViagemColaborativaPedidoResource(Resource):
+    @api.doc("pedir_localizacao_colaborativa")
+    @jwt_required()
+    def post(self, id: str) -> tuple[dict[str, Any], int]:
+        """(Demo) Pede aos alunos confirmados que compartilhem a localização do ônibus."""
+        return localizacao_colaborativa_service.pedir_localizacao(get_jwt_identity(), id), 200

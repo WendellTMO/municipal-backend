@@ -20,6 +20,8 @@ x-app-env: &app_env
   MAIL_USERNAME: ${MAIL_USERNAME:-}
   MAIL_PASSWORD: ${MAIL_PASSWORD:-}
   MAIL_USE_TLS: ${MAIL_USE_TLS:-true}
+  # Demo: o ônibus é localizado pelos celulares dos alunos (1 liga). Deixe vazio fora da demo.
+  LOCALIZACAO_COLABORATIVA: ${LOCALIZACAO_COLABORATIVA:-}
 
 services:
   db:
