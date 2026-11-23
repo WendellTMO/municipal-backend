@@ -32,7 +32,8 @@ VALIDADE_DA_LEITURA = timedelta(seconds=30)
 # Quem mandou algo neste prazo conta como "compartilhando agora".
 JANELA_COMPARTILHANDO = timedelta(seconds=60)
 RETENCAO = timedelta(hours=1)
-INTERVALO_ENTRE_PEDIDOS = timedelta(minutes=3)
+# Longo de propósito: cada pedido vira um aviso para todos os confirmados, e aluno não gosta de spam.
+INTERVALO_ENTRE_PEDIDOS = timedelta(minutes=15)
 RAIO_CHEGADA_M = 60
 PONTOS_A_FRENTE = 3
 PRECISAO_PADRAO_M = 30
@@ -257,6 +258,7 @@ def estado(user_id: str, viagem_id: str) -> dict[str, Any]:
     motivo = _motivo_de_nao_compartilhar(viagem, aluno)
     return {
         "ativa": True,
+        "destino": _destino_do_aluno(viagem, aluno),
         "pode_compartilhar": motivo is None,
         "motivo": motivo,
         "compartilhando": len(recentes),
@@ -266,8 +268,21 @@ def estado(user_id: str, viagem_id: str) -> dict[str, Any]:
     }
 
 
+def _destino_do_aluno(viagem: Viagem, aluno: User) -> dict[str, Any] | None:
+    """Ponto onde o aluno desce nesta viagem. O app usa para perguntar se ele chegou."""
+    confirmacao = db.session.get(AlunosConfirmados, (viagem.id, aluno.id))
+    if confirmacao is None or confirmacao.ponto_destino is None:
+        return None
+    ponto = confirmacao.ponto_destino
+    return {
+        "latitude": float(ponto.latitude),
+        "longitude": float(ponto.longitude),
+        "nome": ponto.apelido,
+    }
+
+
 def pedir_localizacao(user_id: str, viagem_id: str) -> dict[str, Any]:
-    """Avisa os confirmados na viagem que alguém quer ver o ônibus. No máximo um pedido a cada 3 min."""
+    """Avisa os confirmados que alguém quer ver o ônibus. No máximo um pedido a cada 15 minutos."""
     _exigir_ativa()
     aluno, viagem = _aluno_e_viagem(user_id, viagem_id, travar=True)
     agora = datetime.now(UTC)
@@ -288,6 +303,9 @@ def pedir_localizacao(user_id: str, viagem_id: str) -> dict[str, Any]:
     confirmados = AlunosConfirmados.query.filter_by(viagem_id=viagem.id, confirmacao=True).all()
     for conf in confirmados:
         if conf.aluno_id == aluno.id or conf.aluno_id in ja_compartilhando:
+            continue
+        destinatario = db.session.get(User, conf.aluno_id)
+        if destinatario is None or not getattr(destinatario, "receber_notificacoes", True):
             continue
         NotificacaoService._criar_notificacao_interna(
             usuario_id=conf.aluno_id,

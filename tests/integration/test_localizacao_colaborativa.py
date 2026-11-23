@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from datetime import time as hora
 
 import pytest
@@ -170,7 +170,7 @@ def test_parar_de_compartilhar_apaga_a_leitura_do_aluno(_db, ligada, prefeitura,
     assert ViagemRelato.query.filter_by(viagem_id=viagem.id).count() == 0
 
 
-def test_pedido_avisa_os_outros_confirmados_e_so_se_repete_depois_de_3_minutos(
+def test_pedido_avisa_os_outros_confirmados_e_so_se_repete_depois_de_15_minutos(
     _db, ligada, prefeitura, rota
 ):
     viagem = _viagem_com_pontos(prefeitura, rota)
@@ -184,6 +184,39 @@ def test_pedido_avisa_os_outros_confirmados_e_so_se_repete_depois_de_3_minutos(
     assert segundo == {"avisados": 0, "motivo": "recente"}
     assert Notificacao.query.filter_by(usuario_id=outro.id).count() == 1
     assert Notificacao.query.filter_by(usuario_id=quem_pede.id).count() == 0
+
+    viagem.pedido_colaborativo_em = datetime.now(UTC) - timedelta(minutes=16)
+    db.session.commit()
+    assert colaborativa.pedir_localizacao(str(quem_pede.id), str(viagem.id)) == {"avisados": 1}
+
+
+def test_pedido_respeita_quem_desligou_as_notificacoes(_db, ligada, prefeitura, rota):
+    viagem = _viagem_com_pontos(prefeitura, rota)
+    quem_pede = _aluno_confirmado(prefeitura, rota, viagem)
+    silencioso = _aluno_confirmado(prefeitura, rota, viagem)
+    silencioso.receber_notificacoes = False
+    db.session.commit()
+
+    resposta = colaborativa.pedir_localizacao(str(quem_pede.id), str(viagem.id))
+
+    assert resposta == {"avisados": 0}
+    assert Notificacao.query.filter_by(usuario_id=silencioso.id).count() == 0
+
+
+def test_estado_traz_o_destino_do_aluno_para_o_app_perguntar_se_chegou(
+    _db, ligada, prefeitura, rota
+):
+    viagem = _viagem_com_pontos(prefeitura, rota)
+    aluno = _aluno_confirmado(prefeitura, rota, viagem)
+    destino = ViagemPonto.query.filter_by(viagem_id=viagem.id, ordem=4).one()
+    confirmacao = db.session.get(AlunosConfirmados, (viagem.id, aluno.id))
+    confirmacao.ponto_destino_id = destino.ponto_id
+    db.session.commit()
+
+    estado = colaborativa.estado(str(aluno.id), str(viagem.id))
+
+    assert estado["destino"]["nome"] == "D"
+    assert abs(estado["destino"]["latitude"] - (-7.245)) < 0.0001
 
 
 def test_lembrete_de_10_minutos_chega_aos_alunos_mesmo_sem_motorista(
